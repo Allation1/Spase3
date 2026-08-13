@@ -3,17 +3,30 @@ const asteroidsOnScreen = new Map();
 
 // --- Обробники інтерфейсу ---
 const BASE_X = 50; // Координата X бази (центр карти)
+const BASE_Y = 50; // Координата Y бази (центр карти)
 const armamentButton = document.getElementById('armament-button');
 const armamentList = document.getElementById('armament-list');
 const resourcesButton = document.getElementById('resources-button');
 const resourcesList = document.getElementById('resources-list');
+const miningButton = document.getElementById('mining-button');
+const miningList = document.getElementById('mining-list');
 
 armamentButton.addEventListener('click', () => {
+    // Сховати інші вкладки
+    miningList.classList.add('hidden');
+    // Показати/сховати поточну
     armamentList.classList.toggle('hidden');
 });
 
 resourcesButton.addEventListener('click', () => {
     resourcesList.classList.toggle('hidden');
+});
+
+miningButton.addEventListener('click', () => {
+    // Сховати інші вкладки
+    armamentList.classList.add('hidden');
+    // Показати/сховати поточну
+    miningList.classList.toggle('hidden');
 });
 
 // --- WebSocket логіка ---
@@ -35,6 +48,8 @@ socket.onmessage = (event) => {
     updateAsteroids(gameState.asteroids);
     updateProjectiles(gameState.projectiles); // Оновлюємо снаряди
     updateResourceChunks(gameState.resourceChunks); // Оновлюємо уламки ресурсів
+    updatePlayerResources(gameState.playerResources); // Оновлюємо ресурси гравця
+    updateMiningPulses(gameState.miningPulses); // Малюємо імпульси добування
 };
 
 function updateAsteroids(serverAsteroids) {
@@ -98,23 +113,44 @@ function updateAsteroids(serverAsteroids) {
 // --- Оновлення снарядів ---
 const projectilesOnScreen = new Map();
 const resourceChunksOnScreen = new Map();
+const miningPulsesOnScreen = new Map();
 
-function updateResourceChunks(serverChunks) {
-    // Ця функція поки що лише створює уламки, не видаляючи їх.
-    // У майбутньому тут можна буде додати логіку збору ресурсів.
-    serverChunks.forEach(chunk => {
-        if (!resourceChunksOnScreen.has(chunk.id)) {
-            const element = document.createElement('div');
-            element.className = `resource-chunk ${chunk.resourceType}`;
-            element.style.left = `${chunk.x}%`;
-            element.style.top = `${chunk.y}%`;
-            // Можна додати title для простої підказки
-            const resourceName = chunk.resourceType === 'ice' ? 'Лід' : 'Залізна руда';
-            element.title = `${resourceName}: ${chunk.amount}`;
+function updateMiningPulses(serverPulses) {
+    const activePulseTypes = new Set(serverPulses.map(p => p.type));
 
-            gameMap.appendChild(element);
-            resourceChunksOnScreen.set(chunk.id, element);
+    // 1. Видаляємо промені, які більше не активні
+    for (const [id, element] of miningPulsesOnScreen.entries()) {
+        if (!activePulseTypes.has(id)) {
+            element.remove();
+            miningPulsesOnScreen.delete(id);
         }
+    }
+
+    // 2. Створюємо або оновлюємо активні промені
+    serverPulses.forEach(pulse => {
+        let element = miningPulsesOnScreen.get(pulse.type);
+        if (!element) {
+            element = document.createElement('div');
+            element.className = `mining-pulse ${pulse.type}`;
+            gameMap.appendChild(element);
+            miningPulsesOnScreen.set(pulse.type, element);
+        }
+
+        // Розраховуємо довжину та кут
+        const dx_percent = pulse.endX - BASE_X;
+        const dy_percent = pulse.endY - BASE_Y;
+        const mapWidth = gameMap.offsetWidth;
+        const mapHeight = gameMap.offsetHeight;
+        const dx_px = dx_percent / 100 * mapWidth;
+        const dy_px = dy_percent / 100 * mapHeight;
+        const lengthPx = Math.sqrt(dx_px * dx_px + dy_px * dy_px);
+        const angle = Math.atan2(dy_px, dx_px) * (180 / Math.PI);
+
+        // Оновлюємо стилі
+        element.style.left = `${BASE_X}%`;
+        element.style.top = `${BASE_Y}%`;
+        element.style.width = `${lengthPx}px`;
+        element.style.transform = `rotate(${angle}deg)`;
     });
 }
 
@@ -153,4 +189,39 @@ function updateProjectiles(serverProjectiles) {
             }, projectile.duration);
         }
     });
+}
+
+function updateResourceChunks(serverChunks) {
+    const serverIds = new Set(serverChunks.map(c => c.id));
+
+    // Видаляємо зібрані уламки
+    for (const [id, element] of resourceChunksOnScreen.entries()) {
+        if (!serverIds.has(id)) {
+            element.remove();
+            resourceChunksOnScreen.delete(id);
+        }
+    }
+
+    // Створюємо нові уламки
+    serverChunks.forEach(chunk => {
+        if (!resourceChunksOnScreen.has(chunk.id)) {
+            const element = document.createElement('div');
+            element.className = `resource-chunk ${chunk.resourceType}`;
+            element.style.left = `${chunk.x}%`;
+            element.style.top = `${chunk.y}%`;
+            const resourceName = chunk.resourceType === 'ice' ? 'Лід' : 'Залізна руда';
+            element.title = `${resourceName}: ${chunk.amount}`;
+
+            gameMap.appendChild(element);
+            resourceChunksOnScreen.set(chunk.id, element);
+        }
+    });
+}
+
+function updatePlayerResources(playerResources) {
+    const iceAmountElement = document.querySelector('#resources-list .resource-item:nth-child(1) span:nth-child(2)');
+    const ironOreAmountElement = document.querySelector('#resources-list .resource-item:nth-child(2) span:nth-child(2)');
+
+    if (iceAmountElement) iceAmountElement.textContent = playerResources.ice;
+    if (ironOreAmountElement) ironOreAmountElement.textContent = playerResources.ironOre;
 }

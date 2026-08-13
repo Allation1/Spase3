@@ -10,6 +10,19 @@ const port = 3000;
 const BASE_X = 50; // Координата X бази (центр карти)
 const BASE_Y = 50; // Координата Y бази (центр карти)
 
+const miningLaserStats = {
+  ice: {
+    range: 20,
+    resourceType: 'ice',
+    miningIntervalMs: 60000 // 1 одиниця за хвилину
+  },
+  ironOre: {
+    range: 20,
+    resourceType: 'ironOre',
+    miningIntervalMs: 60000 // 1 одиниця за хвилину
+  }
+};
+
 const weaponStats = {
   lightMachineGun: {
     name: "Легкий кулимет",
@@ -83,10 +96,16 @@ const wss = new WebSocket.Server({ server });
 let gameState = {
   asteroids: [],
   projectiles: [], // Новий масив для снарядів
-  resourceChunks: [] // Новий масив для уламків ресурсів
+  resourceChunks: [], // Новий масив для уламків ресурсів
+  playerResources: {
+    ice: 0,
+    ironOre: 0
+  },
+  miningPulses: [] // Для візуалізації імпульсів добування
 };
 let nextAsteroidId = 0;
 let nextProjectileId = 0;
+let nextChunkId = 0;
 
 wss.on('connection', ws => {
   console.log('Клієнт підключився');
@@ -200,7 +219,7 @@ setInterval(() => {
       // Астероїд знищено, створюємо уламки для кожного типу ресурсу
       if (asteroid.resources.ice > 0) {
         gameState.resourceChunks.push({
-          id: `chunk_${asteroid.id}_ice`,
+          id: nextChunkId++,
           x: asteroid.x - 1, // Трохи зміщуємо, щоб уламки не накладались
           y: asteroid.y - 1,
           resourceType: 'ice',
@@ -209,7 +228,7 @@ setInterval(() => {
       }
       if (asteroid.resources.ironOre > 0) {
         gameState.resourceChunks.push({
-          id: `chunk_${asteroid.id}_ironOre`,
+          id: nextChunkId++,
           x: asteroid.x + 1, // Трохи зміщуємо, щоб уламки не накладались
           y: asteroid.y + 1,
           resourceType: 'ironOre',
@@ -232,6 +251,52 @@ setInterval(() => {
     }
     return (now - p.startTime) < p.duration;
   });
+
+  // --- Логіка добування ресурсів ---
+  gameState.miningPulses = []; // Очищуємо масив перед кожним оновленням
+
+  for (const laserType in miningLaserStats) {
+    const laser = miningLaserStats[laserType];
+    let closestChunk = null;
+    let minDistance = Infinity;
+
+    // Знаходимо найближчий уламок відповідного типу в радіусі дії
+    gameState.resourceChunks.forEach(chunk => {
+      if (chunk.resourceType === laser.resourceType) {
+        const dx = chunk.x - BASE_X;
+        const dy = chunk.y - BASE_Y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance <= laser.range && distance < minDistance) {
+          minDistance = distance;
+          closestChunk = chunk;
+        }
+      }
+    });
+
+    if (closestChunk) {
+      // Логіка добування
+      if (!closestChunk.miningStartTime) {
+        closestChunk.miningStartTime = now;
+      }
+
+      if (now - closestChunk.miningStartTime >= laser.miningIntervalMs) {
+        closestChunk.amount -= 1;
+        gameState.playerResources[closestChunk.resourceType] += 1;
+        closestChunk.miningStartTime = now; // Скидаємо таймер для наступної одиниці
+      }
+
+      // Додаємо активний промінь для візуалізації
+      gameState.miningPulses.push({
+        endX: closestChunk.x,
+        endY: closestChunk.y,
+        type: closestChunk.resourceType
+      });
+    }
+  }
+
+  // Видаляємо уламки, в яких закінчились ресурси
+  gameState.resourceChunks = gameState.resourceChunks.filter(chunk => chunk.amount > 0);
+
   broadcastGameState(); // Надсилаємо оновлений стан усім гравцям
 }, 50); // Оновлення ~20 разів на секунду
 
