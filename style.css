@@ -4,9 +4,7 @@ body {
     color: #333;
     padding: 0;
     margin: 0;
-    /* Використовуємо flexbox для ідеального центрування */
     display: flex;
-    justify-content: center; /* Центрування по горизонталі */
     align-items: center;
     min-height: 100vh;
 }
@@ -17,7 +15,11 @@ body {
     height: 90vmin;
     background-color: #000000; /* Чорний колір космосу */
     border: 2px solid #4a4a8f; /* Темно-синій кордон */
-    position: relative; /* Встановлюємо контекст позиціонування для дочірніх елементів */
+    /* Використовуємо абсолютне позиціонування для ідеального центрування */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 #base {
@@ -29,4 +31,43 @@ body {
     height: 10%;
     background-color: #cccccc; /* Світло-сірий колір бази */
     border: 1px solid #ffffff;
+}
+
+.side-panel {
+    height: 90vmin;
+    background-color: #1a1a1a;
+    border: 2px solid #4a4a8f;
+    display: flex;
+    flex-direction: column;
+}
+
+#left-panel {
+    position: absolute;
+    top: 50%;
+    right: calc(50% + 45vmin); /* 50% (центр) + половина ширини карти */
+    transform: translateY(-50%);
+    width: calc(50% - 45vmin - 20px); /* Займає простір до краю, з відступом */
+}
+
+#right-panel {
+    position: absolute;
+    top: 50%;
+    /* Позиціонуємо панель праворуч від карти */
+    left: calc(50% + 45vmin); /* 50% (центр) + половина ширини карти */
+    transform: translateY(-50%);
+    width: calc(50% - 45vmin - 20px); /* Займає простір до краю, з відступом */
+}
+
+.button-container {
+    height: 120px; /* Висота блоку для кнопок */
+    border-bottom: 2px solid #4a4a8f; /* Лінія-розділювач */
+    flex-shrink: 0; /* Забороняємо блоку стискатися */
+    padding: 10px;
+    box-sizing: border-box; /* Враховуємо padding в розмірі блоку */
+}
+
+.info-panel {
+    flex-grow: 1; /* Займає весь залишений простір */
+    padding: 10px;
+    box-sizing: border-box; /* Враховуємо padding в розмірі блоку */
 }
