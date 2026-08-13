@@ -9,8 +9,17 @@
 <body>
     <div class="main-container">
         <div id="left-panel" class="side-panel">
-            <div class="button-container"></div>
-            <div class="info-panel"></div>
+            <div class="button-container">
+                <button id="resources-button" class="game-button">Ресурси</button>
+                <button id="factories-button" class="game-button">Заводи</button>
+                <button id="energy-button" class="game-button">Енергетика</button>
+            </div>
+            <div class="info-panel">
+                <div id="resources-list" class="hidden">
+                    <div class="resource-item"><span>Лід</span><span>0</span></div>
+                    <div class="resource-item"><span>Залізна руда</span><span>0</span></div>
+                </div>
+            </div>
         </div>
         <div id="game-map">
             <div id="base"></div>

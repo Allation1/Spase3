@@ -5,9 +5,15 @@ const asteroidsOnScreen = new Map();
 const BASE_X = 50; // Координата X бази (центр карти)
 const armamentButton = document.getElementById('armament-button');
 const armamentList = document.getElementById('armament-list');
+const resourcesButton = document.getElementById('resources-button');
+const resourcesList = document.getElementById('resources-list');
 
 armamentButton.addEventListener('click', () => {
     armamentList.classList.toggle('hidden');
+});
+
+resourcesButton.addEventListener('click', () => {
+    resourcesList.classList.toggle('hidden');
 });
 
 // --- WebSocket логіка ---
