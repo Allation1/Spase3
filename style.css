@@ -27,8 +27,8 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%); /* Техніка для ідеального центрування */
-    width: 10%; /* Розмір бази відносно карти */
-    height: 10%;
+    width: 5%; /* Розмір бази відносно карти */
+    height: 5%;
     background-color: #cccccc; /* Світло-сірий колір бази */
     border: 1px solid #ffffff;
 }
@@ -64,6 +64,16 @@ body {
     flex-shrink: 0; /* Забороняємо блоку стискатися */
     padding: 10px;
     box-sizing: border-box; /* Враховуємо padding в розмірі блоку */
+}
+
+.asteroid {
+    position: absolute;
+    width: 2%;
+    height: 2%;
+    background-color: #964B00; /* Коричневий колір */
+    border-radius: 50%; /* Робимо їх круглими */
+    transform: translate(-50%, -50%);
+    transition: left 0.05s linear, top 0.05s linear; /* Плавний рух */
 }
 
 .info-panel {

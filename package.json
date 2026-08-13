@@ -1,0 +1,10 @@
+{
+  "name": "space-game",
+  "version": "1.0.0",
+  "description": "My space game",
+  "main": "index.js",
+  "scripts": {},
+  "dependencies": {
+    "ws": "^8.21.3"
+  }
+}
