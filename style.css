@@ -59,11 +59,22 @@ body {
 }
 
 .button-container {
-    height: 120px; /* Висота блоку для кнопок */
+    height: 120px; /* Повертаємо фіксовану висоту блоку */
     border-bottom: 2px solid #4a4a8f; /* Лінія-розділювач */
     flex-shrink: 0; /* Забороняємо блоку стискатися */
     padding: 10px;
     box-sizing: border-box; /* Враховуємо padding в розмірі блоку */
+}
+
+.projectile {
+    position: absolute;
+    width: 0.5%; /* Розмір снаряда */
+    height: 0.5%;
+    background-color: yellow; /* Колір снаряда */
+    border-radius: 50%; /* Робимо його круглим */
+    transform: translate(-50%, -50%); /* Центруємо снаряд */
+    z-index: 10; /* Щоб снаряд був поверх астероїдів */
+    pointer-events: none; /* Не блокуємо події миші */
 }
 
 .asteroid {
@@ -78,6 +89,42 @@ body {
 
 .info-panel {
     flex-grow: 1; /* Займає весь залишений простір */
+    /* Відступи тепер будуть у дочірніх елементів */
+}
+
+.game-button {
+    width: 100%;
+    padding: 8px;
+    background-color: #2a2a2a;
+    color: #00aaff;
+    border: 1px solid #4a4a8f;
+    cursor: pointer;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+.game-button:hover {
+    background-color: #4a4a8f;
+    color: #ffffff;
+}
+
+.hidden {
+    display: none;
+}
+
+#armament-list {
+    /* Розтягуємо блок на весь батьківський контейнер */
+    width: 100%;
+    height: 100%;
+    background-color: #111; /* Трохи інший фон для візуального розділення */
     padding: 10px;
-    box-sizing: border-box; /* Враховуємо padding в розмірі блоку */
+    box-sizing: border-box;
+}
+
+.armament-item {
+    display: inline-block; /* Обгортає рамку навколо тексту */
+    padding: 10px;
+    color: #e0e0e0;
+    border: 1px solid #4a4a8f;
+    cursor: pointer;
 }

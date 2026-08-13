@@ -1,6 +1,17 @@
 const gameMap = document.getElementById('game-map');
 const asteroidsOnScreen = new Map();
 
+// --- Обробники інтерфейсу ---
+const BASE_X = 50; // Координата X бази (центр карти)
+const armamentButton = document.getElementById('armament-button');
+const armamentList = document.getElementById('armament-list');
+
+armamentButton.addEventListener('click', () => {
+    armamentList.classList.toggle('hidden');
+});
+
+// --- WebSocket логіка ---
+
 // Встановлюємо WebSocket з'єднання
 const socket = new WebSocket(`ws://${window.location.host}`);
 
@@ -16,6 +27,7 @@ socket.onerror = (error) => {
 socket.onmessage = (event) => {
     const gameState = JSON.parse(event.data);
     updateAsteroids(gameState.asteroids);
+    updateProjectiles(gameState.projectiles); // Оновлюємо снаряди
 };
 
 function updateAsteroids(serverAsteroids) {
@@ -40,5 +52,41 @@ function updateAsteroids(serverAsteroids) {
         }
         element.style.left = `${asteroid.x}%`;
         element.style.top = `${asteroid.y}%`;
+    });
+}
+
+// --- Оновлення снарядів ---
+const projectilesOnScreen = new Map();
+
+function updateProjectiles(serverProjectiles) {
+    const serverIds = new Set(serverProjectiles.map(p => p.id));
+
+    // Оновлюємо або створюємо снаряди
+    serverProjectiles.forEach(projectile => {
+        let element = projectilesOnScreen.get(projectile.id);
+        if (!element) {
+            element = document.createElement('div');
+            element.className = 'projectile';
+            gameMap.appendChild(element);
+            projectilesOnScreen.set(projectile.id, element);
+
+            // Початкова позиція снаряда (від бази)
+            element.style.left = `${projectile.startX}%`;
+            element.style.top = `${projectile.startY}%`;
+
+            // Використовуємо requestAnimationFrame, щоб гарантувати, що браузер
+            // спочатку відмалює початкову позицію, а потім запустить анімацію.
+            requestAnimationFrame(() => {
+                element.style.transition = `left ${projectile.duration}ms linear, top ${projectile.duration}ms linear`;
+                element.style.left = `${projectile.endX}%`;
+                element.style.top = `${projectile.endY}%`;
+            });
+
+            // Встановлюємо таймер на видалення елемента після завершення анімації
+            setTimeout(() => {
+                element.remove();
+                projectilesOnScreen.delete(projectile.id);
+            }, projectile.duration);
+        }
     });
 }
