@@ -1,4 +1,6 @@
-REM Вимикаємо відображення команд у консолі, щоб не було зайвого тексту
 @echo off
-REM Запускаємо нове вікно термінала (cmd) і переходимо в папку з грою, залишаючи вікно відкритим (/k)
-start "" cmd /k "cd /d C:\g
+cd /d C:\g
+git add .
+git commit -m "Auto sync"
+git checkout HEAD -- .
+cmd
