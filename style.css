@@ -17,5 +17,16 @@ body {
     height: 90vmin;
     background-color: #000000; /* Чорний колір космосу */
     border: 2px solid #4a4a8f; /* Темно-синій кордон */
-    /* margin-top більше не потрібен для центрування */
+    position: relative; /* Встановлюємо контекст позиціонування для дочірніх елементів */
+}
+
+#base {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Техніка для ідеального центрування */
+    width: 10%; /* Розмір бази відносно карти */
+    height: 10%;
+    background-color: #cccccc; /* Світло-сірий колір бази */
+    border: 1px solid #ffffff;
 }
