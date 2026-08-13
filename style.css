@@ -2,13 +2,20 @@ body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
     color: #333;
-    margin: 20px;
     padding: 0;
+    margin: 0;
+    /* Використовуємо flexbox для ідеального центрування */
+    display: flex;
+    justify-content: center; /* Центрування по горизонталі */
+    align-items: center;
+    min-height: 100vh;
 }
 
-h1 {
-    color: #0056b3;
-    text-align: center;
-    border-bottom: 2px solid #0056b3;
-    padding-bottom: 10px;
+#game-map {
+    /* Збільшуємо розмір на половину (60 + 30 = 90) */
+    width: 90vmin;
+    height: 90vmin;
+    background-color: #000000; /* Чорний колір космосу */
+    border: 2px solid #4a4a8f; /* Темно-синій кордон */
+    /* margin-top більше не потрібен для центрування */
 }
