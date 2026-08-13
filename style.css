@@ -69,6 +69,25 @@ body {
     gap: 10px;
 }
 
+.resource-chunk {
+    position: absolute;
+    width: 1.5%;
+    height: 1.5%;
+    transform: translate(-50%, -50%);
+    border-radius: 2px;
+    opacity: 0.8;
+}
+
+.resource-chunk.ice {
+    background-color: #aaddff;
+    border: 1px solid #ffffff;
+}
+
+.resource-chunk.ironOre {
+    background-color: #b9734f;
+    border: 1px solid #d3a38a;
+}
+
 .projectile {
     position: absolute;
     width: 0.5%; /* Розмір снаряда */
@@ -88,6 +107,20 @@ body {
     border-radius: 50%; /* Робимо їх круглими */
     transform: translate(-50%, -50%);
     transition: left 0.05s linear, top 0.05s linear; /* Плавний рух */
+    cursor: pointer; /* Показуємо, що можна навести */
+}
+
+.asteroid-tooltip {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.75);
+    color: white;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    transform: translate(-50%, -150%); /* Розміщуємо над астероїдом */
+    white-space: nowrap;
+    pointer-events: none; /* Щоб підказка не заважала іншим подіям миші */
+    z-index: 20;
 }
 
 .info-panel {

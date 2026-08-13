@@ -34,6 +34,7 @@ socket.onmessage = (event) => {
     const gameState = JSON.parse(event.data);
     updateAsteroids(gameState.asteroids);
     updateProjectiles(gameState.projectiles); // Оновлюємо снаряди
+    updateResourceChunks(gameState.resourceChunks); // Оновлюємо уламки ресурсів
 };
 
 function updateAsteroids(serverAsteroids) {
@@ -55,14 +56,67 @@ function updateAsteroids(serverAsteroids) {
             element.className = 'asteroid';
             gameMap.appendChild(element);
             asteroidsOnScreen.set(asteroid.id, element);
+
+            // Додаємо обробники подій для підказки
+            element.addEventListener('mouseenter', () => {
+                const tooltip = document.createElement('div');
+                tooltip.className = 'asteroid-tooltip';
+                let tooltipContent = [];
+                if (asteroid.resources.ice > 0) {
+                    tooltipContent.push(`Лід: ${asteroid.resources.ice}`);
+                }
+                if (asteroid.resources.ironOre > 0) {
+                    tooltipContent.push(`Залізна руда: ${asteroid.resources.ironOre}`);
+                }
+                tooltip.innerHTML = tooltipContent.join('<br>'); // Використовуємо innerHTML для переносів рядків
+                tooltip.style.left = element.style.left;
+                tooltip.style.top = element.style.top;
+                element.dataset.tooltipId = `tooltip-${asteroid.id}`;
+                tooltip.id = element.dataset.tooltipId;
+                gameMap.appendChild(tooltip);
+            });
+
+            element.addEventListener('mouseleave', () => {
+                const tooltip = document.getElementById(element.dataset.tooltipId);
+                if (tooltip) {
+                    tooltip.remove();
+                }
+            });
         }
         element.style.left = `${asteroid.x}%`;
         element.style.top = `${asteroid.y}%`;
+
+        // Оновлюємо позицію підказки, якщо вона існує
+        const tooltip = document.getElementById(element.dataset.tooltipId);
+        if (tooltip) {
+            tooltip.style.left = element.style.left;
+            tooltip.style.top = element.style.top;
+        }
     });
 }
 
 // --- Оновлення снарядів ---
 const projectilesOnScreen = new Map();
+const resourceChunksOnScreen = new Map();
+
+function updateResourceChunks(serverChunks) {
+    // Ця функція поки що лише створює уламки, не видаляючи їх.
+    // У майбутньому тут можна буде додати логіку збору ресурсів.
+    serverChunks.forEach(chunk => {
+        if (!resourceChunksOnScreen.has(chunk.id)) {
+            const element = document.createElement('div');
+            element.className = `resource-chunk ${chunk.resourceType}`;
+            element.style.left = `${chunk.x}%`;
+            element.style.top = `${chunk.y}%`;
+            // Можна додати title для простої підказки
+            const resourceName = chunk.resourceType === 'ice' ? 'Лід' : 'Залізна руда';
+            element.title = `${resourceName}: ${chunk.amount}`;
+
+            gameMap.appendChild(element);
+            resourceChunksOnScreen.set(chunk.id, element);
+        }
+    });
+}
 
 function updateProjectiles(serverProjectiles) {
     const serverIds = new Set(serverProjectiles.map(p => p.id));
@@ -79,6 +133,11 @@ function updateProjectiles(serverProjectiles) {
             // Початкова позиція снаряда (від бази)
             element.style.left = `${projectile.startX}%`;
             element.style.top = `${projectile.startY}%`;
+            element.style.transition = 'none'; // Вимикаємо перехід для початкової позиції
+
+            // Примусово викликаємо reflow, щоб браузер відмалював початкову позицію
+            // перед застосуванням анімації.
+            element.offsetWidth; 
 
             // Використовуємо requestAnimationFrame, щоб гарантувати, що браузер
             // спочатку відмалює початкову позицію, а потім запустить анімацію.
@@ -87,7 +146,6 @@ function updateProjectiles(serverProjectiles) {
                 element.style.left = `${projectile.endX}%`;
                 element.style.top = `${projectile.endY}%`;
             });
-
             // Встановлюємо таймер на видалення елемента після завершення анімації
             setTimeout(() => {
                 element.remove();

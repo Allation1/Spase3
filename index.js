@@ -14,9 +14,9 @@ const weaponStats = {
   lightMachineGun: {
     name: "Легкий кулимет",
     damage: 1,
-    range: 10, // Дальність в одиницях карти (10 одиниць = 10% ширини/висоти карти)
+    range: 20, // Дальність в одиницях карти (20 одиниць = 20% ширини/висоти карти)
     fireRateMs: 1000, // 1 постріл за секунду
-    projectileSpeed: 20 // Швидкість снаряда в одиницях карти за секунду
+    projectileSpeed: 40 // Швидкість снаряда в одиницях карти за секунду (збільшено)
   }
 };
 
@@ -82,7 +82,8 @@ const wss = new WebSocket.Server({ server });
 
 let gameState = {
   asteroids: [],
-  projectiles: [] // Новий масив для снарядів
+  projectiles: [], // Новий масив для снарядів
+  resourceChunks: [] // Новий масив для уламків ресурсів
 };
 let nextAsteroidId = 0;
 let nextProjectileId = 0;
@@ -166,6 +167,9 @@ setInterval(() => {
   const dy = targetY - y;
   const distance = Math.sqrt(dx * dx + dy * dy);
   const speed = 0.3 + Math.random() * 0.4; // Випадкова швидкість (0.3-0.7)
+  const hp = Math.floor(Math.random() * 10) + 1;
+  const iceAmount = Math.floor(Math.random() * (hp + 1)); // Випадкова кількість льоду від 0 до hp
+  const ironOreAmount = hp - iceAmount; // Решта - залізна руда
 
   const newAsteroid = {
     id: nextAsteroidId++,
@@ -173,7 +177,11 @@ setInterval(() => {
     y: y,
     vx: (dx / distance) * speed,
     vy: (dy / distance) * speed,
-    hp: Math.floor(Math.random() * 10) + 1 // HP від 1 до 10
+    hp: hp,
+    resources: {
+      ice: iceAmount,
+      ironOre: ironOreAmount
+    }
   };
   gameState.asteroids.push(newAsteroid);
 }, 4000);
@@ -185,8 +193,33 @@ setInterval(() => {
     asteroid.x += asteroid.vx;
     asteroid.y += asteroid.vy;
 
-    // Видаляємо, якщо HP <= 0 або астероїд вилетів за межі карти (з невеликим запасом)
-    return asteroid.hp > 0 && asteroid.x > -5 && asteroid.x < 105 && asteroid.y > -5 && asteroid.y < 105;
+    const isAlive = asteroid.hp > 0;
+    const isInBounds = asteroid.x > -5 && asteroid.x < 105 && asteroid.y > -5 && asteroid.y < 105;
+
+    if (!isAlive) {
+      // Астероїд знищено, створюємо уламки для кожного типу ресурсу
+      if (asteroid.resources.ice > 0) {
+        gameState.resourceChunks.push({
+          id: `chunk_${asteroid.id}_ice`,
+          x: asteroid.x - 1, // Трохи зміщуємо, щоб уламки не накладались
+          y: asteroid.y - 1,
+          resourceType: 'ice',
+          amount: asteroid.resources.ice
+        });
+      }
+      if (asteroid.resources.ironOre > 0) {
+        gameState.resourceChunks.push({
+          id: `chunk_${asteroid.id}_ironOre`,
+          x: asteroid.x + 1, // Трохи зміщуємо, щоб уламки не накладались
+          y: asteroid.y + 1,
+          resourceType: 'ironOre',
+          amount: asteroid.resources.ironOre
+        });
+      }
+    }
+
+    // Залишаємо астероїд, якщо він живий і в межах карти
+    return isAlive && isInBounds;
   });
 
   // Видалення снарядів, які вже долетіли
