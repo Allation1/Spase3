@@ -99,7 +99,9 @@ let gameState = {
   resourceChunks: [], // Новий масив для уламків ресурсів
   playerResources: {
     ice: 0,
-    ironOre: 0
+    ironOre: 0,
+    metal: 0,
+    water: 0
   },
   miningPulses: [] // Для візуалізації імпульсів добування
 };

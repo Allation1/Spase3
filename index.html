@@ -16,8 +16,22 @@
             </div>
             <div class="info-panel">
                 <div id="resources-list" class="hidden">
-                    <div class="resource-item"><span>Лід</span><span>0</span></div>
-                    <div class="resource-item"><span>Залізна руда</span><span>0</span></div>
+                    <div class="tab-container">
+                        <button class="tab-button active" data-tab="basic-resources">Базові</button>
+                        <button class="tab-button" data-tab="secondary-resources">Вторинні</button>
+                    </div>
+                    <div id="basic-resources" class="tab-content active">
+                        <div class="resource-item"><span>Лід</span><span>0</span></div>
+                        <div class="resource-item"><span>Залізна руда</span><span>0</span></div>
+                    </div>
+                    <div id="secondary-resources" class="tab-content">
+                        <div class="resource-item"><span>Метал</span><span>0</span></div>
+                        <div class="resource-item"><span>Вода</span><span>0</span></div>
+                    </div>
+                </div>
+                <div id="factories-list" class="hidden">
+                    <div class="factory-item">Металургійний завод</div>
+                    <div class="factory-item">Завод переробки льоду</div>
                 </div>
             </div>
         </div>
@@ -39,8 +53,16 @@
                     </div>
                 </div>
                 <div id="mining-list" class="hidden">
-                    <div class="mining-item">Лазер для Льоду</div>
-                    <div class="mining-item">Лазер для Залізної руди</div>
+                    <div class="mining-item">
+                        Лазер для Льоду
+                        <br>Дальність: 20% карти
+                        <br>Швидкість: 1 од./хв
+                    </div>
+                    <div class="mining-item">
+                        Лазер для Залізної руди
+                        <br>Дальність: 20% карти
+                        <br>Швидкість: 1 од./хв
+                    </div>
                 </div>
             </div>
         </div>

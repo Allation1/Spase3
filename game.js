@@ -8,8 +8,26 @@ const armamentButton = document.getElementById('armament-button');
 const armamentList = document.getElementById('armament-list');
 const resourcesButton = document.getElementById('resources-button');
 const resourcesList = document.getElementById('resources-list');
+const factoriesButton = document.getElementById('factories-button');
+const factoriesList = document.getElementById('factories-list');
 const miningButton = document.getElementById('mining-button');
 const miningList = document.getElementById('mining-list');
+
+// --- Логіка вкладок ---
+document.querySelectorAll('#resources-list .tab-button').forEach(button => {
+    button.addEventListener('click', () => {
+        const parent = button.closest('#resources-list');
+        const tabName = button.dataset.tab;
+
+        // Оновлюємо кнопки
+        parent.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+
+        // Оновлюємо вміст
+        parent.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(tabName).classList.add('active');
+    });
+});
 
 armamentButton.addEventListener('click', () => {
     // Сховати інші вкладки
@@ -19,7 +37,18 @@ armamentButton.addEventListener('click', () => {
 });
 
 resourcesButton.addEventListener('click', () => {
+    // Сховати інші вкладки
+    factoriesList.classList.add('hidden');
+    // Показати/сховати поточну
     resourcesList.classList.toggle('hidden');
+});
+
+factoriesButton.addEventListener('click', () => {
+    // Сховати інші вкладки
+    // Сховати інші вкладки в цій панелі
+    resourcesList.classList.add('hidden');
+    // Показати/сховати поточну
+    factoriesList.classList.toggle('hidden');
 });
 
 miningButton.addEventListener('click', () => {
@@ -220,8 +249,12 @@ function updateResourceChunks(serverChunks) {
 
 function updatePlayerResources(playerResources) {
     const iceAmountElement = document.querySelector('#resources-list .resource-item:nth-child(1) span:nth-child(2)');
-    const ironOreAmountElement = document.querySelector('#resources-list .resource-item:nth-child(2) span:nth-child(2)');
+    const ironOreAmountElement = document.querySelector('#basic-resources .resource-item:nth-child(2) span:nth-child(2)');
+    const metalAmountElement = document.querySelector('#secondary-resources .resource-item:nth-child(1) span:nth-child(2)');
+    const waterAmountElement = document.querySelector('#secondary-resources .resource-item:nth-child(2) span:nth-child(2)');
 
     if (iceAmountElement) iceAmountElement.textContent = playerResources.ice;
     if (ironOreAmountElement) ironOreAmountElement.textContent = playerResources.ironOre;
+    if (metalAmountElement) metalAmountElement.textContent = playerResources.metal;
+    if (waterAmountElement) waterAmountElement.textContent = playerResources.water;
 }
