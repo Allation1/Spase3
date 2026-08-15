@@ -369,6 +369,12 @@ function updateResourceChunks(serverChunks) {
             gameMap.appendChild(element);
             resourceChunksOnScreen.set(chunk.id, element);
         }
+        // Оновлюємо позицію існуючого уламка
+        const existingElement = resourceChunksOnScreen.get(chunk.id);
+        if (existingElement) {
+            existingElement.style.left = `${chunk.x}%`;
+            existingElement.style.top = `${chunk.y}%`;
+        }
     });
 }
 
@@ -415,7 +421,7 @@ function updateMiningUI(serverLasers) {
         if (laserState.status === 'mining') {
             const now = Date.now();
             const elapsedTime = now - laserState.startTime;
-            const totalTime = laserConfig[laserId].processingTimeMs;
+            const totalTime = laserId === 'scrapMetal' ? laserState.pullDuration : laserConfig[laserId].processingTimeMs;
             const remainingTimeMs = Math.max(0, totalTime - elapsedTime);
             
             const progressPercent = Math.min(100, (elapsedTime / totalTime) * 100);

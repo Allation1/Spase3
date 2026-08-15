@@ -185,6 +185,7 @@ body {
     transform: translate(-50%, -50%);
     border-radius: 2px;
     opacity: 0.8;
+    transition: left 0.05s linear, top 0.05s linear; /* Плавний рух уламків */
 }
 
 .resource-chunk.ice {

@@ -484,57 +484,102 @@ setInterval(() => {
 
 
   // --- Логіка добування ресурсів ---
-  gameState.miningPulses = []; // Очищуємо масив перед кожним оновленням
+  gameState.miningPulses = []; // Очищуємо масив перед кожним оновленням  
   
+  // Обробляємо всі лазери
   Object.keys(miningLaserStats).forEach(laserId => {
     const laser = miningLaserStats[laserId];
     const laserState = gameState.miningLasers[laserId];
 
-    if (laserState.status === 'idle') {
-      // Шукаємо нову ціль
-      let closestChunk = null;
-      let minDistance = Infinity;
+    if (laserId === 'scrapMetal') {
+      // --- Нова логіка для Магнітного трактора ---
+      if (laserState.status === 'idle') {
+        let closestScrap = null;
+        let minDistance = Infinity;
+        gameState.resourceChunks.forEach(chunk => {
+          if (chunk.resourceType === 'scrapMetal') {
+            const dx = chunk.x - BASE_X;
+            const dy = chunk.y - BASE_Y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < minDistance) {
+              minDistance = distance;
+              closestScrap = chunk;
+            }
+          }
+        });
 
-      gameState.resourceChunks.forEach(chunk => {
-        if (chunk.resourceType === laser.resourceType) {
-          const dx = chunk.x - BASE_X;
-          const dy = chunk.y - BASE_Y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          if (distance <= laser.range && distance < minDistance) {
-            minDistance = distance;
-            closestChunk = chunk;
+        if (closestScrap) {
+          laserState.status = 'mining';
+          laserState.targetChunkId = closestScrap.id;
+          laserState.startTime = now;
+          laserState.pullDuration = minDistance * 1000;
+        }
+      }
+
+      if (laserState.status === 'mining') {
+        const targetChunk = gameState.resourceChunks.find(c => c.id === laserState.targetChunkId);
+        if (!targetChunk) {
+          laserState.status = 'idle';
+          laserState.targetChunkId = null;
+          laserState.startTime = 0;
+        } else {
+          // --- Анімація притягування ---
+          const elapsedTime = now - laserState.startTime;
+          const pullProgress = Math.min(1, elapsedTime / laserState.pullDuration);
+
+          // Початкові координати уламка (зберігаємо їх при першому захопленні)
+          if (!laserState.initialChunkPos) {
+            laserState.initialChunkPos = { x: targetChunk.x, y: targetChunk.y };
+          }
+          targetChunk.x = laserState.initialChunkPos.x + (BASE_X - laserState.initialChunkPos.x) * pullProgress;
+          targetChunk.y = laserState.initialChunkPos.y + (BASE_Y - laserState.initialChunkPos.y) * pullProgress;
+
+          gameState.miningPulses.push({ id: targetChunk.id, endX: targetChunk.x, endY: targetChunk.y, type: 'scrapMetal' });
+          if (now - laserState.startTime >= laserState.pullDuration) {
+            gameState.playerResources.scrapMetal += targetChunk.amount;
+            targetChunk.amount = 0;
+            laserState.status = 'idle';
+            laserState.targetChunkId = null;
+            laserState.startTime = 0;
+            delete laserState.initialChunkPos; // Очищуємо початкову позицію
           }
         }
-      });
-
-      if (closestChunk) {
-        laserState.status = 'mining';
-        laserState.targetChunkId = closestChunk.id;
-        laserState.startTime = now;
       }
-    } 
-    
-    if (laserState.status === 'mining') {
-      const targetChunk = gameState.resourceChunks.find(c => c.id === laserState.targetChunkId);
-
-      // Якщо ціль зникла або вийшла за межі діапазону, скидаємо стан
-      if (!targetChunk || Math.sqrt(Math.pow(targetChunk.x - BASE_X, 2) + Math.pow(targetChunk.y - BASE_Y, 2)) > laser.range) {
-        laserState.status = 'idle';
-        laserState.targetChunkId = null;
-        laserState.startTime = 0;
-      } else {
-        // Продовжуємо добування і малюємо промінь
-        gameState.miningPulses.push({ id: targetChunk.id, endX: targetChunk.x, endY: targetChunk.y, type: targetChunk.resourceType });
-
-        // Перевіряємо, чи завершився цикл добування
-        if (now - laserState.startTime >= laser.miningIntervalMs) {
-          targetChunk.amount -= 1;
-          gameState.playerResources[targetChunk.resourceType] += 1;
-          
-          // Не скидаємо ціль, а просто починаємо новий цикл добування з того ж уламка.
-          // Якщо в уламку закінчаться ресурси, він буде видалений, і на наступному тику
-          // лазер автоматично перейде в стан 'idle', бо не знайде ціль.
-          laserState.startTime = now; // Починаємо новий цикл
+    } else {
+      // --- Стара логіка для звичайних лазерів (лід, руда) ---
+      if (laserState.status === 'idle') {
+        let closestChunk = null;
+        let minDistance = Infinity;
+        gameState.resourceChunks.forEach(chunk => {
+          if (chunk.resourceType === laser.resourceType) {
+            const dx = chunk.x - BASE_X;
+            const dy = chunk.y - BASE_Y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance <= laser.range && distance < minDistance) {
+              minDistance = distance;
+              closestChunk = chunk;
+            }
+          }
+        });
+        if (closestChunk) {
+          laserState.status = 'mining';
+          laserState.targetChunkId = closestChunk.id;
+          laserState.startTime = now;
+        }
+      }
+      if (laserState.status === 'mining') {
+        const targetChunk = gameState.resourceChunks.find(c => c.id === laserState.targetChunkId);
+        if (!targetChunk || Math.sqrt(Math.pow(targetChunk.x - BASE_X, 2) + Math.pow(targetChunk.y - BASE_Y, 2)) > laser.range) {
+          laserState.status = 'idle';
+          laserState.targetChunkId = null;
+          laserState.startTime = 0;
+        } else {
+          gameState.miningPulses.push({ id: targetChunk.id, endX: targetChunk.x, endY: targetChunk.y, type: targetChunk.resourceType });
+          if (now - laserState.startTime >= laser.miningIntervalMs) {
+            targetChunk.amount -= 1;
+            gameState.playerResources[targetChunk.resourceType] += 1;
+            laserState.startTime = now;
+          }
         }
       }
     }
