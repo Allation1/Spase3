@@ -1,67 +1,104 @@
-const gameMap = document.getElementById('game-map');
 const asteroidsOnScreen = new Map();
 
 // --- Обробники інтерфейсу ---
 const BASE_X = 50; // Координата X бази (центр карти)
 const BASE_Y = 50; // Координата Y бази (центр карти)
-const armamentButton = document.getElementById('armament-button');
-const armamentList = document.getElementById('armament-list');
-const resourcesButton = document.getElementById('resources-button');
-const resourcesList = document.getElementById('resources-list');
-const factoriesButton = document.getElementById('factories-button');
-const factoriesList = document.getElementById('factories-list');
-const miningButton = document.getElementById('mining-button');
-const miningList = document.getElementById('mining-list');
+
+// Об'єкти для зберігання посилань на елементи
+let gameMap;
+let armamentButton, armamentList;
+let resourcesButton, resourcesList;
+let factoriesButton, factoriesList;
+let energyButton, energyList;
+let miningButton, miningList;
+let mainPanels;
+
+// Ініціалізуємо всі елементи після завантаження DOM
+function initializeUI() {
+    gameMap = document.getElementById('game-map');
+    armamentButton = document.getElementById('armament-button');
+    armamentList = document.getElementById('armament-list');
+    resourcesButton = document.getElementById('resources-button');
+    resourcesList = document.getElementById('resources-list');
+    factoriesButton = document.getElementById('factories-button');
+    factoriesList = document.getElementById('factories-list');
+    energyButton = document.getElementById('energy-button');
+    energyList = document.getElementById('energy-list');
+    miningButton = document.getElementById('mining-button');
+    miningList = document.getElementById('mining-list');
+
+    // Зберігаємо посилання на всі основні панелі для зручного керування
+    mainPanels = [armamentList, resourcesList, factoriesList, energyList, miningList];
+    
+    // Встановлюємо обробники подій
+    setupEventListeners();
+}
 
 // --- Логіка вкладок ---
-document.querySelectorAll('#resources-list .tab-button').forEach(button => {
-    button.addEventListener('click', () => {
-        const parent = button.closest('#resources-list');
-        const tabName = button.dataset.tab;
+function togglePanel(clickedPanel) {
+    const isClickedPanelVisible = !clickedPanel.classList.contains('hidden');
 
-        // Оновлюємо кнопки
-        parent.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-        button.classList.add('active');
-
-        // Оновлюємо вміст
-        parent.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-        document.getElementById(tabName).classList.add('active');
+    // Завжди ховаємо всі панелі
+    mainPanels.forEach(panel => {
+        if (panel) {
+            panel.classList.add('hidden');
+        }
     });
-});
 
-armamentButton.addEventListener('click', () => {
-    // Сховати інші вкладки
-    miningList.classList.add('hidden');
-    // Показати/сховати поточну
-    armamentList.classList.toggle('hidden');
-});
+    // Якщо панель, на яку клікнули, була прихована, то тепер робимо її видимою.
+    if (!isClickedPanelVisible && clickedPanel) {
+        clickedPanel.classList.remove('hidden');
+    }
+}
 
-resourcesButton.addEventListener('click', () => {
-    // Сховати інші вкладки
-    factoriesList.classList.add('hidden');
-    // Показати/сховати поточну
-    resourcesList.classList.toggle('hidden');
-});
+function setupEventListeners() {
+    document.querySelectorAll('#resources-list .tab-button').forEach(button => {
+        button.addEventListener('click', () => {
+            const parent = button.closest('#resources-list');
+            const tabName = button.dataset.tab;
 
-factoriesButton.addEventListener('click', () => {
-    // Сховати інші вкладки
-    // Сховати інші вкладки в цій панелі
-    resourcesList.classList.add('hidden');
-    // Показати/сховати поточну
-    factoriesList.classList.toggle('hidden');
-});
+            // Оновлюємо кнопки
+            parent.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
 
-miningButton.addEventListener('click', () => {
-    // Сховати інші вкладки
-    armamentList.classList.add('hidden');
-    // Показати/сховати поточну
-    miningList.classList.toggle('hidden');
-});
+            // Оновлюємо вміст
+            parent.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+        });
+    });
+
+    if (armamentButton) armamentButton.addEventListener('click', () => {
+        togglePanel(armamentList);
+    });
+
+    if (resourcesButton) resourcesButton.addEventListener('click', () => {
+        togglePanel(resourcesList);
+    });
+
+    if (factoriesButton) factoriesButton.addEventListener('click', () => {
+        togglePanel(factoriesList);
+    });
+
+    if (energyButton) energyButton.addEventListener('click', () => {
+        togglePanel(energyList);
+    });
+
+    if (miningButton) miningButton.addEventListener('click', () => {
+        togglePanel(miningList);
+    });
+}
 
 // --- WebSocket логіка ---
 
 // Встановлюємо WebSocket з'єднання
 const socket = new WebSocket(`ws://${window.location.host}`);
+
+// Ініціалізуємо UI при завантаженні DOM
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeUI);
+} else {
+    initializeUI();
+}
 
 socket.onopen = () => {
     console.log('WebSocket з\'єднання встановлено.');
@@ -145,33 +182,45 @@ const resourceChunksOnScreen = new Map();
 const miningPulsesOnScreen = new Map();
 
 function updateMiningPulses(serverPulses) {
-    const activePulseTypes = new Set(serverPulses.map(p => p.type));
+    // console.log(`--- Оновлення променів: отримано ${serverPulses.length} променів від сервера ---`);
+
+    const activePulseIds = new Set(serverPulses.map(p => p.id)); // Тепер відстежуємо за унікальним ID
 
     // 1. Видаляємо промені, які більше не активні
-    for (const [id, element] of miningPulsesOnScreen.entries()) {
-        if (!activePulseTypes.has(id)) {
+    for (const [id, element] of miningPulsesOnScreen.entries()) { // id тут - це pulse.id
+        if (!activePulseIds.has(id)) {
             element.remove();
             miningPulsesOnScreen.delete(id);
+            // console.log(`[ВИДАЛЕНО] Промінь ${id} видалено з екрана.`);
         }
     }
 
     // 2. Створюємо або оновлюємо активні промені
     serverPulses.forEach(pulse => {
-        let element = miningPulsesOnScreen.get(pulse.type);
+        let element = miningPulsesOnScreen.get(pulse.id); // Використовуємо pulse.id як ключ
         if (!element) {
             element = document.createElement('div');
             element.className = `mining-pulse ${pulse.type}`;
             gameMap.appendChild(element);
-            miningPulsesOnScreen.set(pulse.type, element);
+            miningPulsesOnScreen.set(pulse.id, element); // Зберігаємо з унікальним ID
+            // console.log(`[СТВОРЕНО] Новий промінь ${pulse.id} для ресурсу '${pulse.type}'.`);
         }
 
         // Розраховуємо довжину та кут
         const dx_percent = pulse.endX - BASE_X;
         const dy_percent = pulse.endY - BASE_Y;
+
+        if (!gameMap) {
+            console.error("ПОМИЛКА: Елемент 'game-map' не знайдено!");
+            return;
+        }
+
         const mapWidth = gameMap.offsetWidth;
         const mapHeight = gameMap.offsetHeight;
+
         const dx_px = dx_percent / 100 * mapWidth;
         const dy_px = dy_percent / 100 * mapHeight;
+
         const lengthPx = Math.sqrt(dx_px * dx_px + dy_px * dy_px);
         const angle = Math.atan2(dy_px, dx_px) * (180 / Math.PI);
 
@@ -180,6 +229,7 @@ function updateMiningPulses(serverPulses) {
         element.style.top = `${BASE_Y}%`;
         element.style.width = `${lengthPx}px`;
         element.style.transform = `rotate(${angle}deg)`;
+        // console.log(`[ОНОВЛЕНО] Промінь ${pulse.id}: довжина=${lengthPx.toFixed(2)}px, кут=${angle.toFixed(2)}°`);
     });
 }
 
@@ -248,7 +298,7 @@ function updateResourceChunks(serverChunks) {
 }
 
 function updatePlayerResources(playerResources) {
-    const iceAmountElement = document.querySelector('#resources-list .resource-item:nth-child(1) span:nth-child(2)');
+    const iceAmountElement = document.querySelector('#basic-resources .resource-item:nth-child(1) span:nth-child(2)');
     const ironOreAmountElement = document.querySelector('#basic-resources .resource-item:nth-child(2) span:nth-child(2)');
     const metalAmountElement = document.querySelector('#secondary-resources .resource-item:nth-child(1) span:nth-child(2)');
     const waterAmountElement = document.querySelector('#secondary-resources .resource-item:nth-child(2) span:nth-child(2)');

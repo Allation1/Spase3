@@ -289,6 +289,7 @@ setInterval(() => {
 
       // Додаємо активний промінь для візуалізації
       gameState.miningPulses.push({
+        id: closestChunk.id, // Використовуємо ID уламка як ID променя
         endX: closestChunk.x,
         endY: closestChunk.y,
         type: closestChunk.resourceType
