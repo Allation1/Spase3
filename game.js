@@ -12,6 +12,7 @@ let factoriesButton, factoriesList;
 let energyButton, energyList;
 let scienceButton, scienceList;
 let miningButton, miningList;
+let defenseButton, defenseList;
 let mainPanels;
 
 // Ініціалізуємо всі елементи після завантаження DOM
@@ -29,9 +30,11 @@ function initializeUI() {
     scienceList = document.getElementById('science-list');
     miningButton = document.getElementById('mining-button');
     miningList = document.getElementById('mining-list');
+    defenseButton = document.getElementById('defense-button');
+    defenseList = document.getElementById('defense-list');
 
     // Зберігаємо посилання на всі основні панелі для зручного керування
-    mainPanels = [armamentList, resourcesList, factoriesList, energyList, scienceList, miningList];
+    mainPanels = [armamentList, resourcesList, factoriesList, energyList, scienceList, miningList, defenseList];
     
     // Встановлюємо обробники подій
     setupEventListeners();
@@ -92,6 +95,10 @@ function setupEventListeners() {
 
     if (miningButton) miningButton.addEventListener('click', () => {
         togglePanel(miningList);
+    });
+
+    if (defenseButton) defenseButton.addEventListener('click', () => {
+        togglePanel(defenseList);
     });
 }
 
