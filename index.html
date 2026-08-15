@@ -99,8 +99,14 @@
                 </div>
                 <div id="defense-list" class="hidden">
                     <!-- Тут буде вміст для вкладки "Захист" -->
-                    <div id="repair-drone-button" class="defense-item">
-                        Ремонтний дрон (1 метал = 10 броні)
+                    <div id="repair-drone-button" class="defense-item" data-drone-id="repair-drone">
+                        Ремонтний дрон
+                        <br>Ремонтує: 10 броні / 10с
+                        <br>Вартість: 1 метал
+                        <div class="factory-progress-container">
+                            <div class="factory-progress-bar"></div>
+                            <span class="factory-timer">--:--</span>
+                        </div>
                     </div>
                 </div>
                 <div id="mining-list" class="hidden">

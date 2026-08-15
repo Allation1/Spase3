@@ -139,6 +139,9 @@ let gameState = {
     smelter: { status: 'idle', startTime: 0 },
     iceProcessor: { status: 'idle', startTime: 0 }
   },
+  repairDrone: {
+    status: 'idle', startTime: 0
+  },
   miningLasers: {
     ice: { status: 'idle', targetChunkId: null, startTime: 0 },
     ironOre: { status: 'idle', targetChunkId: null, startTime: 0 },
@@ -156,25 +159,8 @@ wss.on('connection', ws => {
     console.log('Клієнт відключився');
   });
 
-  ws.on('message', (message) => {
-    try {
-      const data = JSON.parse(message);
-      if (data.action === 'repair_base') {
-        // Логіка ремонту бази
-        if (gameState.playerResources.metal >= 1 && gameState.base.hp < gameState.base.maxHp) {
-          gameState.playerResources.metal -= 1;
-          gameState.base.hp = Math.min(gameState.base.maxHp, gameState.base.hp + 10);
-          // Додаємо ефект для анімації на клієнті
-          gameState.repairEffects.push({
-            id: Date.now(), // Простий унікальний ID
-            startTime: Date.now()
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Помилка обробки повідомлення від клієнта:', error);
-    }
-  });
+  // Обробник повідомлень від клієнта більше не потрібен для ремонту,
+  // оскільки він тепер автоматичний.
 
 });
 
@@ -447,6 +433,32 @@ setInterval(() => {
   // Видалення застарілих ефектів ремонту
   const effectDuration = 2000; // 2 секунди
   gameState.repairEffects = gameState.repairEffects.filter(effect => (now - effect.startTime) < effectDuration);
+
+  // --- Логіка ремонтного дрона ---
+  const repairDrone = gameState.repairDrone;
+  const repairTimeMs = 10000; // 10 секунд
+
+  if (repairDrone.status === 'idle') {
+    // Перевіряємо, чи потрібен ремонт і чи є ресурси
+    if (gameState.base.hp <= gameState.base.maxHp - 10 && gameState.playerResources.metal >= 1) {
+      gameState.playerResources.metal -= 1; // Споживаємо метал
+      repairDrone.status = 'repairing';
+      repairDrone.startTime = now;
+    }
+  } else if (repairDrone.status === 'repairing') {
+    // Перевіряємо, чи завершено ремонт
+    if (now - repairDrone.startTime >= repairTimeMs) {
+      gameState.base.hp = Math.min(gameState.base.maxHp, gameState.base.hp + 10); // Ремонтуємо
+      repairDrone.status = 'idle';
+      repairDrone.startTime = 0;
+
+      // Додаємо ефект для анімації на клієнті
+      gameState.repairEffects.push({
+        id: Date.now(),
+        startTime: now
+      });
+    }
+  }
 
   // --- Логіка заводів ---
   Object.keys(factoryStats).forEach(factoryId => {

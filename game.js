@@ -100,11 +100,6 @@ function setupEventListeners() {
     if (defenseButton) defenseButton.addEventListener('click', () => {
         togglePanel(defenseList);
     });
-
-    const repairDroneButton = document.getElementById('repair-drone-button');
-    if (repairDroneButton) repairDroneButton.addEventListener('click', () => {
-        socket.send(JSON.stringify({ action: 'repair_base' }));
-    });
 }
 
 // --- WebSocket логіка ---
@@ -469,6 +464,35 @@ function updateFactoriesUI(serverFactories) {
     });
 }
 
+function updateDefenseUI(droneState) {
+    if (!droneState) return;
+
+    const droneElement = document.querySelector('.defense-item[data-drone-id="repair-drone"]');
+    if (!droneElement) return;
+
+    const progressBar = droneElement.querySelector('.factory-progress-bar');
+    const timer = droneElement.querySelector('.factory-timer');
+    const repairTimeMs = 10000;
+
+    if (droneState.status === 'repairing') {
+        const now = Date.now();
+        const elapsedTime = now - droneState.startTime;
+        const remainingTimeMs = Math.max(0, repairTimeMs - elapsedTime);
+        
+        const progressPercent = Math.min(100, (elapsedTime / repairTimeMs) * 100);
+
+        progressBar.style.width = `${progressPercent}%`;
+
+        const remainingSeconds = Math.ceil(remainingTimeMs / 1000);
+        const minutes = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
+        const seconds = (remainingSeconds % 60).toString().padStart(2, '0');
+        timer.textContent = `${minutes}:${seconds}`;
+    } else { // 'idle'
+        progressBar.style.width = '0%';
+        timer.textContent = '--:--';
+    }
+}
+
 const repairEffectsOnScreen = new Set();
 
 function updateRepairEffects(serverEffects) {
@@ -505,6 +529,7 @@ let lastKnownGameState = {};
 setInterval(() => {
     if (lastKnownGameState.factories) updateFactoriesUI(lastKnownGameState.factories);
     if (lastKnownGameState.miningLasers) updateMiningUI(lastKnownGameState.miningLasers);
+    if (lastKnownGameState.repairDrone) updateDefenseUI(lastKnownGameState.repairDrone);
 }, 200); 
 
 socket.onmessage = (event) => {
@@ -521,6 +546,7 @@ socket.onmessage = (event) => {
     updateBaseHealth(gameState.base);
     updateRepairEffects(gameState.repairEffects);
     updateMiningPulses(gameState.miningPulses);
+    updateDefenseUI(gameState.repairDrone);
     updateMiningUI(gameState.miningLasers);
     updateFactoriesUI(gameState.factories);
 };
