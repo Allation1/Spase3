@@ -14,17 +14,17 @@ const miningLaserStats = {
   ice: {
     range: 20,
     resourceType: 'ice',
-    miningIntervalMs: 60000 // 1 одиниця за хвилину
+    miningIntervalMs: 30000 // 1 одиниця за 30 секунд
   },
   ironOre: {
     range: 20,
     resourceType: 'ironOre',
-    miningIntervalMs: 60000 // 1 одиниця за хвилину
+    miningIntervalMs: 30000 // 1 одиниця за 30 секунд
   },
   scrapMetal: {
     range: 20,
     resourceType: 'scrapMetal',
-    miningIntervalMs: 60000 // 1 одиниця за хвилину
+    miningIntervalMs: 30000 // 1 одиниця за 30 секунд
   }
 };
 
@@ -32,12 +32,12 @@ const factoryStats = {
   smelter: {
     inputResource: 'ironOre',
     outputResource: 'metal',
-    processingTimeMs: 60000 // 1 одиниця на хвилину
+    processingTimeMs: 30000 // 1 одиниця за 30 секунд
   },
   iceProcessor: {
     inputResource: 'ice',
     outputResource: 'water',
-    processingTimeMs: 60000 // 1 одиниця на хвилину
+    processingTimeMs: 30000 // 1 одиниця за 30 секунд
   }
 };
 
@@ -284,11 +284,11 @@ function managePirateWaves() {
 
     if (wave.piratesRemaining <= 0) {
         // Хвиля закінчилася або ще не починалася
-        if (wave.nextWaveIn === 0) { // Початок таймера до нової хвилі
+        if (wave.nextWaveIn === 0 && wave.number < 1) { // Початок таймера, тільки якщо це ще не була перша хвиля
             wave.nextWaveIn = now + PEACE_TIME_MS;
         }
 
-        if (now >= wave.nextWaveIn) { // Починаємо нову хвилю
+        if (now >= wave.nextWaveIn && wave.number < 1) { // Починаємо нову хвилю, тільки якщо це перша хвиля
             wave.number++;
             wave.piratesToSpawn = 100; // Починаємо зі 100 піратів
             wave.piratesRemaining = wave.piratesToSpawn;

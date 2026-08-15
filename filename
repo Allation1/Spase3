@@ -187,12 +187,13 @@ function updatePirates(serverPirates, waveState) {
     const pirateCounter = document.getElementById('pirate-counter');
 
     if (pirateCounter) {
-        if (waveState.piratesRemaining > 0) {
-            pirateCounter.textContent = `Пірати: ${waveState.piratesRemaining}`;
-        } else {
+        pirateCounter.textContent = `Пірати: ${waveState.piratesRemaining}`;
+
+        // Якщо піратів 0, але є таймер до наступної хвилі, показуємо його.
+        if (waveState.piratesRemaining <= 0) {
             const now = Date.now();
             const timeLeft = Math.ceil((waveState.nextWaveIn - now) / 1000);
-            if (timeLeft > 0) {
+            if (timeLeft > 0 && waveState.number < 1) {
                 pirateCounter.textContent = `Наступна хвиля через: ${timeLeft}с`;
             }
         }
