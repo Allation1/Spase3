@@ -140,7 +140,7 @@ let gameState = {
     iceProcessor: { status: 'idle', startTime: 0 }
   },
   science: {
-    hullStudy: { status: 'idle', startTime: 0 },
+    hullStudy: { status: 'idle', startTime: 0, isAutomatic: false },
     points: 0,
     upgrades: {
       baseArmor: { level: 0 },
@@ -173,11 +173,11 @@ wss.on('connection', ws => {
       const data = JSON.parse(message);
       const science = gameState.science;
 
-      if (data.action === 'study_hull') {
-        if (science.hullStudy.status === 'idle' && gameState.playerResources.shipWreckage >= 1) {
-          gameState.playerResources.shipWreckage -= 1;
-          science.hullStudy.status = 'studying';
-          science.hullStudy.startTime = Date.now();
+      if (data.action === 'toggle_hull_study') {
+        science.hullStudy.isAutomatic = !science.hullStudy.isAutomatic;
+        if (!science.hullStudy.isAutomatic) { // Якщо вимикаємо, зупиняємо поточне дослідження
+          science.hullStudy.status = 'idle';
+          science.hullStudy.startTime = 0;
         }
       } else if (data.action === 'upgrade') {
         const upgrade = science.upgrades[data.type];
@@ -506,8 +506,12 @@ setInterval(() => {
   // --- Логіка науки ---
   const hullStudy = gameState.science.hullStudy;
   const studyTimeMs = 10000; // 10 секунд
-
-  if (hullStudy.status === 'studying') {
+  
+  if (hullStudy.isAutomatic && hullStudy.status === 'idle' && gameState.playerResources.shipWreckage >= 1) {
+    gameState.playerResources.shipWreckage -= 1;
+    hullStudy.status = 'studying';
+    hullStudy.startTime = now;
+  } else if (hullStudy.status === 'studying') {
     if (now - hullStudy.startTime >= studyTimeMs) {
       gameState.science.points += 1;
       hullStudy.status = 'idle';

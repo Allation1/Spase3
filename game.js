@@ -104,7 +104,7 @@ function setupEventListeners() {
     // Обробники для кнопок науки
     const studyHullButton = document.getElementById('study-hull-button');
     if (studyHullButton) studyHullButton.addEventListener('click', () => {
-        socket.send(JSON.stringify({ action: 'study_hull' }));
+        socket.send(JSON.stringify({ action: 'toggle_hull_study' }));
     });
 
     document.querySelectorAll('.upgrade-button').forEach(button => {
@@ -549,6 +549,12 @@ function updateScienceUI(scienceState) {
         } else {
             progressBar.style.width = '0%';
             timer.textContent = '--:--';
+        }
+
+        // Оновлення тексту кнопки
+        const studyButton = document.getElementById('study-hull-button');
+        if (studyButton) {
+            studyButton.textContent = scienceState.hullStudy.isAutomatic ? 'Припинити' : 'Авто-вивчення';
         }
     }
 
