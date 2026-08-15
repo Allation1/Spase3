@@ -24,7 +24,7 @@
                     <div id="basic-resources" class="tab-content active">
                         <div class="resource-item"><span>Лід:</span><span>0</span></div>
                         <div class="resource-item"><span>Залізна руда:</span><span>0</span></div>
-                        <div class="resource-item"><span>Металолом:</span><span>0</span></div>
+                        <div class="resource-item"><span>Уламки корабля:</span><span>0</span></div>
                     </div>
                     <div id="secondary-resources" class="tab-content">
                         <div class="resource-item"><span>Метал:</span><span>0</span></div>
@@ -52,8 +52,44 @@
                     </div>
                 </div>
                 <div id="science-list" class="hidden">
-                    <!-- Тут буде вміст для вкладки "Наука" -->
-                    <div class="science-item">Поки що немає доступних досліджень.</div>
+                    <div id="hull-study-container" class="science-item">
+                        <b>Вивчення корпусу</b> (Очки науки: <span id="science-points-counter">0</span>)
+                        <br>Переробляє: 1 Уламок → 1 Очко науки
+                        <br>Час: 10с
+                        <div class="factory-progress-container">
+                            <div class="factory-progress-bar"></div>
+                            <span class="factory-timer">--:--</span>
+                        </div>
+                        <button id="study-hull-button" class="game-button">Вивчати</button>
+                    </div>
+
+                    <div id="upgrade-baseArmor" class="science-item upgrade-item">
+                        <span>Броня бази (Рівень: <span class="upgrade-level">0</span>)</span>
+                        <span class="upgrade-details">
+                            Бонус: +10% до макс. броні
+                            <button class="upgrade-button" data-upgrade="baseArmor">
+                                Вивчити (<span class="upgrade-cost">5</span> очок)
+                            </button>
+                        </span>
+                    </div>
+                    <div id="upgrade-wreckageDropChance" class="science-item upgrade-item">
+                        <span>Шанс випадіння уламків (Рівень: <span class="upgrade-level">0</span>)</span>
+                         <span class="upgrade-details">
+                            Шанс: <span class="upgrade-bonus">10%</span>
+                            <button class="upgrade-button" data-upgrade="wreckageDropChance">
+                                Вивчити (<span class="upgrade-cost">5</span> очок)
+                            </button>
+                        </span>
+                    </div>
+                    <div id="upgrade-hullResearch" class="science-item upgrade-item">
+                        <span>Дослідження корпусу (Рівень: <span class="upgrade-level">0</span>)</span>
+                         <span class="upgrade-details">
+                            Бонус: <span class="upgrade-bonus">+0%</span>
+                            <button class="upgrade-button" data-upgrade="hullResearch">
+                                Вивчити (<span class="upgrade-cost">5</span> очок)
+                            </button>
+                        </span>
+                    </div>
                 </div>
                 <div id="energy-list" class="hidden">
                     <div class="energy-item">
@@ -128,9 +164,9 @@
                             <span class="factory-timer">--:--</span>
                         </div>
                     </div>
-                    <div class="mining-item" data-laser-id="scrapMetal">
+                    <div class="mining-item" data-laser-id="shipWreckage">
                         Магнітний трактор
-                        <br>Притягує металолом до бази
+                        <br>Притягує уламки до бази
                         <br>Швидкість: залежить від відстані
                         <div class="factory-progress-container">
                             <div class="factory-progress-bar"></div>

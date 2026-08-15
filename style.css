@@ -169,7 +169,7 @@ body {
     background-color: #ff7f50;
 }
 
-.mining-pulse.scrapMetal {
+.mining-pulse.shipWreckage {
     background-color: #cccccc;
 }
 
@@ -198,7 +198,7 @@ body {
     border: 1px solid #d3a38a;
 }
 
-.resource-chunk.scrapMetal {
+.resource-chunk.shipWreckage {
     background-color: #888888;
     border: 1px solid #aaaaaa;
 }
@@ -464,6 +464,23 @@ body {
     border: 1px solid #4a4a8f;
     cursor: pointer;
     margin-bottom: 10px;
+}
+
+.upgrade-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.upgrade-details {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.upgrade-button {
+    padding: 4px 8px;
+    font-size: 12px;
 }
 
 #science-list {

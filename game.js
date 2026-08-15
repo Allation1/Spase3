@@ -100,6 +100,22 @@ function setupEventListeners() {
     if (defenseButton) defenseButton.addEventListener('click', () => {
         togglePanel(defenseList);
     });
+
+    // Обробники для кнопок науки
+    const studyHullButton = document.getElementById('study-hull-button');
+    if (studyHullButton) studyHullButton.addEventListener('click', () => {
+        socket.send(JSON.stringify({ action: 'study_hull' }));
+    });
+
+    document.querySelectorAll('.upgrade-button').forEach(button => {
+        button.addEventListener('click', () => {
+            const upgradeType = button.dataset.upgrade;
+            socket.send(JSON.stringify({
+                action: 'upgrade',
+                type: upgradeType
+            }));
+        });
+    });
 }
 
 // --- WebSocket логіка ---
@@ -361,8 +377,8 @@ function updateResourceChunks(serverChunks) {
                 resourceName = 'Лід';
             } else if (chunk.resourceType === 'ironOre') {
                 resourceName = 'Залізна руда';
-            } else if (chunk.resourceType === 'scrapMetal') {
-                resourceName = 'Металолом';
+            } else if (chunk.resourceType === 'shipWreckage') {
+                resourceName = 'Уламки корабля';
             }
             element.title = `${resourceName}: ${chunk.amount}`;
 
@@ -387,7 +403,7 @@ function updatePlayerResources(playerResources) {
 
     if (iceAmountElement) iceAmountElement.textContent = playerResources.ice;
     if (ironOreAmountElement) ironOreAmountElement.textContent = playerResources.ironOre;
-    if (scrapMetalAmountElement) scrapMetalAmountElement.textContent = playerResources.scrapMetal;
+    if (scrapMetalAmountElement) scrapMetalAmountElement.textContent = playerResources.shipWreckage;
     if (metalAmountElement) metalAmountElement.textContent = playerResources.metal;
     if (waterAmountElement) waterAmountElement.textContent = playerResources.water;
 }
@@ -407,7 +423,7 @@ function updateMiningUI(serverLasers) {
     const laserConfig = {
         ice: { processingTimeMs: 30000 },
         ironOre: { processingTimeMs: 30000 },
-        scrapMetal: { processingTimeMs: 30000 }
+        shipWreckage: { processingTimeMs: 30000 }
     };
 
     Object.keys(serverLasers).forEach(laserId => {
@@ -421,7 +437,7 @@ function updateMiningUI(serverLasers) {
         if (laserState.status === 'mining') {
             const now = Date.now();
             const elapsedTime = now - laserState.startTime;
-            const totalTime = laserId === 'scrapMetal' ? laserState.pullDuration : laserConfig[laserId].processingTimeMs;
+            const totalTime = laserId === 'shipWreckage' ? laserState.pullDuration : laserConfig[laserId].processingTimeMs;
             const remainingTimeMs = Math.max(0, totalTime - elapsedTime);
             
             const progressPercent = Math.min(100, (elapsedTime / totalTime) * 100);
@@ -507,6 +523,68 @@ function updateDefenseUI(droneState) {
     }
 }
 
+function updateScienceUI(scienceState) {
+    if (!scienceState) return;
+
+    // Оновлення вивчення корпусу
+    const pointsCounter = document.getElementById('science-points-counter');
+    if (pointsCounter) pointsCounter.textContent = scienceState.points;
+
+    const hullStudyContainer = document.getElementById('hull-study-container');
+    if (hullStudyContainer) {
+        const progressBar = hullStudyContainer.querySelector('.factory-progress-bar');
+        const timer = hullStudyContainer.querySelector('.factory-timer');
+        const studyTimeMs = 10000;
+
+        if (scienceState.hullStudy.status === 'studying') {
+            const now = Date.now();
+            const elapsedTime = now - scienceState.hullStudy.startTime;
+            const remainingTimeMs = Math.max(0, studyTimeMs - elapsedTime);
+            const progressPercent = Math.min(100, (elapsedTime / studyTimeMs) * 100);
+
+            progressBar.style.width = `${progressPercent}%`;
+
+            const remainingSeconds = Math.ceil(remainingTimeMs / 1000);
+            timer.textContent = `00:${remainingSeconds.toString().padStart(2, '0')}`;
+        } else {
+            progressBar.style.width = '0%';
+            timer.textContent = '--:--';
+        }
+    }
+
+    // Оновлення покращень
+    const upgrades = scienceState.upgrades;
+    const baseUpgradeCost = 5;
+
+    // Броня бази
+    const armorUpgrade = document.getElementById('upgrade-baseArmor');
+    if (armorUpgrade) {
+        armorUpgrade.querySelector('.upgrade-level').textContent = upgrades.baseArmor.level;
+        const cost = Math.floor(baseUpgradeCost * Math.pow(1.1, upgrades.baseArmor.level));
+        armorUpgrade.querySelector('.upgrade-cost').textContent = cost;
+    }
+
+    // Шанс випадіння
+    const wreckageUpgrade = document.getElementById('upgrade-wreckageDropChance');
+    if (wreckageUpgrade) {
+        wreckageUpgrade.querySelector('.upgrade-level').textContent = upgrades.wreckageDropChance.level;
+        const cost = Math.floor(baseUpgradeCost * Math.pow(1.1, upgrades.wreckageDropChance.level));
+        wreckageUpgrade.querySelector('.upgrade-cost').textContent = cost;
+        const currentChance = 10 * (1 + upgrades.wreckageDropChance.level * 0.1);
+        wreckageUpgrade.querySelector('.upgrade-bonus').textContent = `${currentChance.toFixed(1)}%`;
+    }
+
+    // Дослідження корпусу
+    const hullResearchUpgrade = document.getElementById('upgrade-hullResearch');
+    if (hullResearchUpgrade) {
+        hullResearchUpgrade.querySelector('.upgrade-level').textContent = upgrades.hullResearch.level;
+        const cost = Math.floor(baseUpgradeCost * Math.pow(1.1, upgrades.hullResearch.level));
+        hullResearchUpgrade.querySelector('.upgrade-cost').textContent = cost;
+        const currentBonus = 5 * upgrades.hullResearch.level;
+        hullResearchUpgrade.querySelector('.upgrade-bonus').textContent = `+${currentBonus}%`;
+    }
+}
+
 const repairEffectsOnScreen = new Set();
 
 function updateRepairEffects(serverEffects) {
@@ -544,6 +622,7 @@ setInterval(() => {
     if (lastKnownGameState.factories) updateFactoriesUI(lastKnownGameState.factories);
     if (lastKnownGameState.miningLasers) updateMiningUI(lastKnownGameState.miningLasers);
     if (lastKnownGameState.repairDrone) updateDefenseUI(lastKnownGameState.repairDrone);
+    if (lastKnownGameState.science) updateScienceUI(lastKnownGameState.science);
 }, 200); 
 
 socket.onmessage = (event) => {
@@ -560,6 +639,7 @@ socket.onmessage = (event) => {
     updateBaseHealth(gameState.base);
     updateRepairEffects(gameState.repairEffects);
     updateMiningPulses(gameState.miningPulses);
+    updateScienceUI(gameState.science);
     updateDefenseUI(gameState.repairDrone);
     updateMiningUI(gameState.miningLasers);
     updateFactoriesUI(gameState.factories);

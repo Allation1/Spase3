@@ -21,9 +21,9 @@ const miningLaserStats = {
     resourceType: 'ironOre',
     miningIntervalMs: 30000 // 1 одиниця за 30 секунд
   },
-  scrapMetal: {
+  shipWreckage: {
     range: 20,
-    resourceType: 'scrapMetal',
+    resourceType: 'shipWreckage',
     miningIntervalMs: 30000 // 1 одиниця за 30 секунд
   }
 };
@@ -119,7 +119,7 @@ let gameState = {
   playerResources: {
     ice: 0,
     ironOre: 0,
-    scrapMetal: 0,
+    shipWreckage: 0,
     metal: 0,
     water: 0
   },
@@ -139,13 +139,22 @@ let gameState = {
     smelter: { status: 'idle', startTime: 0 },
     iceProcessor: { status: 'idle', startTime: 0 }
   },
+  science: {
+    hullStudy: { status: 'idle', startTime: 0 },
+    points: 0,
+    upgrades: {
+      baseArmor: { level: 0 },
+      wreckageDropChance: { level: 0 },
+      hullResearch: { level: 0 }
+    }
+  },
   repairDrone: {
     status: 'idle', startTime: 0
   },
   miningLasers: {
     ice: { status: 'idle', targetChunkId: null, startTime: 0 },
     ironOre: { status: 'idle', targetChunkId: null, startTime: 0 },
-    scrapMetal: { status: 'idle', targetChunkId: null, startTime: 0 }
+    shipWreckage: { status: 'idle', targetChunkId: null, startTime: 0 }
   }
 };
 let nextAsteroidId = 0;
@@ -159,8 +168,40 @@ wss.on('connection', ws => {
     console.log('Клієнт відключився');
   });
 
-  // Обробник повідомлень від клієнта більше не потрібен для ремонту,
-  // оскільки він тепер автоматичний.
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+      const science = gameState.science;
+
+      if (data.action === 'study_hull') {
+        if (science.hullStudy.status === 'idle' && gameState.playerResources.shipWreckage >= 1) {
+          gameState.playerResources.shipWreckage -= 1;
+          science.hullStudy.status = 'studying';
+          science.hullStudy.startTime = Date.now();
+        }
+      } else if (data.action === 'upgrade') {
+        const upgrade = science.upgrades[data.type];
+        if (upgrade) {
+          const baseCost = 5;
+          const cost = Math.floor(baseCost * Math.pow(1.1, upgrade.level));
+          if (science.points >= cost) {
+            science.points -= cost;
+            upgrade.level += 1;
+
+            // Застосовуємо ефект від покращення броні
+            if (data.type === 'baseArmor') {
+              const baseMaxHp = 100;
+              gameState.base.maxHp = Math.floor(baseMaxHp * (1 + upgrade.level * 0.1));
+              // Також трохи ремонтуємо базу при покращенні
+              gameState.base.hp = Math.min(gameState.base.maxHp, gameState.base.hp + Math.floor(baseMaxHp * 0.1));
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Помилка обробки повідомлення від клієнта:', error);
+    }
+  });
 
 });
 
@@ -399,13 +440,15 @@ setInterval(() => {
 
     // Перевіряємо, чи пірат ще живий
     if (pirate.hp <= 0) {
-      // Шанс 10% на випадіння металолому
-      if (Math.random() <= 0.1) {
+      // Розраховуємо шанс випадіння з урахуванням покращень
+      const baseDropChance = 0.1; // 10%
+      const currentDropChance = baseDropChance * (1 + gameState.science.upgrades.wreckageDropChance.level * 0.1);
+      if (Math.random() <= currentDropChance) {
         gameState.resourceChunks.push({
           id: nextChunkId++,
           x: pirate.x,
           y: pirate.y,
-          resourceType: 'scrapMetal',
+          resourceType: 'shipWreckage',
           amount: 1 // 1 одиниця металолому
         });
       }
@@ -460,6 +503,19 @@ setInterval(() => {
     }
   }
 
+  // --- Логіка науки ---
+  const hullStudy = gameState.science.hullStudy;
+  const studyTimeMs = 10000; // 10 секунд
+
+  if (hullStudy.status === 'studying') {
+    if (now - hullStudy.startTime >= studyTimeMs) {
+      gameState.science.points += 1;
+      hullStudy.status = 'idle';
+      hullStudy.startTime = 0;
+    }
+  }
+
+
   // --- Логіка заводів ---
   Object.keys(factoryStats).forEach(factoryId => {
     const factory = factoryStats[factoryId];
@@ -491,13 +547,13 @@ setInterval(() => {
     const laser = miningLaserStats[laserId];
     const laserState = gameState.miningLasers[laserId];
 
-    if (laserId === 'scrapMetal') {
+    if (laserId === 'shipWreckage') {
       // --- Нова логіка для Магнітного трактора ---
       if (laserState.status === 'idle') {
         let closestScrap = null;
         let minDistance = Infinity;
         gameState.resourceChunks.forEach(chunk => {
-          if (chunk.resourceType === 'scrapMetal') {
+          if (chunk.resourceType === 'shipWreckage') {
             const dx = chunk.x - BASE_X;
             const dy = chunk.y - BASE_Y;
             const distance = Math.sqrt(dx * dx + dy * dy);
@@ -534,9 +590,9 @@ setInterval(() => {
           targetChunk.x = laserState.initialChunkPos.x + (BASE_X - laserState.initialChunkPos.x) * pullProgress;
           targetChunk.y = laserState.initialChunkPos.y + (BASE_Y - laserState.initialChunkPos.y) * pullProgress;
 
-          gameState.miningPulses.push({ id: targetChunk.id, endX: targetChunk.x, endY: targetChunk.y, type: 'scrapMetal' });
+          gameState.miningPulses.push({ id: targetChunk.id, endX: targetChunk.x, endY: targetChunk.y, type: 'shipWreckage' });
           if (now - laserState.startTime >= laserState.pullDuration) {
-            gameState.playerResources.scrapMetal += targetChunk.amount;
+            gameState.playerResources.shipWreckage += targetChunk.amount;
             targetChunk.amount = 0;
             laserState.status = 'idle';
             laserState.targetChunkId = null;
