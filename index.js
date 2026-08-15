@@ -23,6 +23,19 @@ const miningLaserStats = {
   }
 };
 
+const factoryStats = {
+  smelter: {
+    inputResource: 'ironOre',
+    outputResource: 'metal',
+    processingTimeMs: 60000 // 1 одиниця на хвилину
+  },
+  iceProcessor: {
+    inputResource: 'ice',
+    outputResource: 'water',
+    processingTimeMs: 60000 // 1 одиниця на хвилину
+  }
+};
+
 const weaponStats = {
   lightMachineGun: {
     name: "Легкий кулимет",
@@ -95,17 +108,38 @@ const wss = new WebSocket.Server({ server });
 
 let gameState = {
   asteroids: [],
+  pirates: [],
   projectiles: [], // Новий масив для снарядів
   resourceChunks: [], // Новий масив для уламків ресурсів
   playerResources: {
     ice: 0,
     ironOre: 0,
+    scrapMetal: 0,
     metal: 0,
     water: 0
   },
-  miningPulses: [] // Для візуалізації імпульсів добування
+  base: {
+    hp: 100,
+    maxHp: 100
+  },
+  wave: {
+    number: 0,
+    piratesToSpawn: 0,
+    piratesRemaining: 0,
+    nextWaveIn: 0 // Час в мс до наступної хвилі
+  },
+  miningPulses: [], // Для візуалізації імпульсів добування
+  factories: {
+    smelter: { status: 'idle', startTime: 0 },
+    iceProcessor: { status: 'idle', startTime: 0 }
+  },
+  miningLasers: {
+    ice: { status: 'idle', targetChunkId: null, startTime: 0 },
+    ironOre: { status: 'idle', targetChunkId: null, startTime: 0 }
+  }
 };
 let nextAsteroidId = 0;
+let nextPirateId = 0;
 let nextProjectileId = 0;
 let nextChunkId = 0;
 
@@ -134,32 +168,50 @@ setInterval(() => {
   if (now - lastFireTime >= weapon.fireRateMs) {
     lastFireTime = now;
 
-    // Знаходимо найближчий астероїд в радіусі дії
-    let closestAsteroid = null;
+    let target = null;
     let minDistance = Infinity;
 
-    gameState.asteroids.forEach(asteroid => {
-      const dx = asteroid.x - BASE_X;
-      const dy = asteroid.y - BASE_Y;
+    // Пріоритет 1: Пірати
+    gameState.pirates.forEach(pirate => {
+      const dx = pirate.x - BASE_X;
+      const dy = pirate.y - BASE_Y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-
-      if (asteroid.hp > 0 && distance <= weapon.range && distance < minDistance) {
+      if (distance <= weapon.range && distance < minDistance) {
         minDistance = distance;
-        closestAsteroid = asteroid;
+        target = pirate;
       }
     });
 
-    if (closestAsteroid) {
+    // Пріоритет 2: Астероїди (якщо не знайдено піратів)
+    if (!target) {
+      gameState.asteroids.forEach(asteroid => {
+        const dx = asteroid.x - BASE_X;
+        const dy = asteroid.y - BASE_Y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (asteroid.hp > 0 && distance <= weapon.range && distance < minDistance) {
+          minDistance = distance;
+          target = asteroid;
+        }
+      });
+    }
+
+    if (target) {
       // Застосовуємо урон
-      closestAsteroid.hp -= weapon.damage;
+      target.hp -= weapon.damage;
+
+      // Якщо ціль - пірат, і його здоров'я <= 0, він буде видалений в основному циклі
+      if (target.type === 'pirate' && target.hp <= 0) {
+        // Можна додати логіку випадіння луту з пірата тут
+      }
 
       // Створюємо снаряд для анімації на клієнті
       const projectile = {
         id: nextProjectileId++,
         startX: BASE_X,
         startY: BASE_Y,
-        endX: closestAsteroid.x, // Снаряд летить до поточної позиції астероїда
-        endY: closestAsteroid.y,
+        endX: target.x,
+        endY: target.y,
         duration: Math.max(100, (minDistance / weapon.projectileSpeed) * 1000) // Тривалість польоту в мс, мінімум 100мс
       };
       gameState.projectiles.push(projectile);
@@ -207,8 +259,67 @@ setInterval(() => {
   gameState.asteroids.push(newAsteroid);
 }, 4000);
 
+// --- Логіка хвиль піратів ---
+let lastPirateSpawnTime = 0;
+const PIRATE_SPAWN_INTERVAL = 10000; // 10 секунд
+const PEACE_TIME_MS = 5000; // 5 секунд
+
+function managePirateWaves() {
+    const now = Date.now();
+    const wave = gameState.wave;
+
+    if (wave.piratesRemaining <= 0) {
+        // Хвиля закінчилася або ще не починалася
+        if (wave.nextWaveIn === 0) { // Початок таймера до нової хвилі
+            wave.nextWaveIn = now + PEACE_TIME_MS;
+        }
+
+        if (now >= wave.nextWaveIn) { // Починаємо нову хвилю
+            wave.number++;
+            wave.piratesToSpawn = 100; // Починаємо зі 100 піратів
+            wave.piratesRemaining = wave.piratesToSpawn;
+            wave.nextWaveIn = 0;
+        }
+    } else {
+        // Хвиля активна, спавнимо піратів
+        if (wave.piratesToSpawn > 0 && (now - lastPirateSpawnTime >= PIRATE_SPAWN_INTERVAL)) {
+            spawnPirate();
+            wave.piratesToSpawn--;
+            lastPirateSpawnTime = now;
+        }
+    }
+}
+
+function spawnPirate() {
+    const side = Math.floor(Math.random() * 4);
+    let x, y;
+    const position = Math.random() * 100;
+
+    if (side === 0) { x = position; y = -5; }
+    else if (side === 1) { x = 105; y = position; }
+    else if (side === 2) { x = position; y = 105; }
+    else { x = -5; y = position; }
+
+    const dx = BASE_X - x;
+    const dy = BASE_Y - y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const speed = 0.5;
+
+    const newPirate = {
+        id: nextPirateId++, type: 'pirate', x, y,
+        vx: (dx / distance) * speed,
+        vy: (dy / distance) * speed,
+        hp: 5, state: 'approaching', lastAttackTime: 0,
+        orbitAngle: Math.atan2(y - BASE_Y, x - BASE_X)
+    };
+    gameState.pirates.push(newPirate);
+}
+
 // Основний ігровий цикл (оновлення позицій)
 setInterval(() => {
+  // Оголошуємо 'now' на початку циклу, щоб вона була доступна для всіх операцій
+  const now = Date.now();
+
   // Використовуємо filter для безпечного видалення елементів під час ітерації
   gameState.asteroids = gameState.asteroids.filter(asteroid => {
     asteroid.x += asteroid.vx;
@@ -243,8 +354,50 @@ setInterval(() => {
     return isAlive && isInBounds;
   });
 
+  // Оновлення піратів
+  const orbitDistance = 15;
+  const orbitSpeed = 0.02; // Радіан за тік
+
+  gameState.pirates = gameState.pirates.filter(pirate => {
+    const dx_base = pirate.x - BASE_X;
+    const dy_base = pirate.y - BASE_Y;
+    const distanceToBase = Math.sqrt(dx_base * dx_base + dy_base * dy_base);
+
+    if (distanceToBase <= orbitDistance) {
+      pirate.state = 'circling';
+    }
+
+    if (pirate.state === 'approaching') {
+      pirate.x += pirate.vx;
+      pirate.y += pirate.vy;
+    } else { // circling
+      // Рух по орбіті
+      pirate.orbitAngle += orbitSpeed;
+      pirate.x = BASE_X + Math.cos(pirate.orbitAngle) * orbitDistance;
+      pirate.y = BASE_Y + Math.sin(pirate.orbitAngle) * orbitDistance;
+
+      // Атака на базу
+      if (now - pirate.lastAttackTime >= 1000) { // 1 атака в секунду
+        gameState.base.hp = Math.max(0, gameState.base.hp - 1);
+        pirate.lastAttackTime = now;
+      }
+    }
+
+    // Перевіряємо, чи пірат ще живий
+    if (pirate.hp <= 0) {
+      // Тут можна додати випадіння металолому
+      gameState.wave.piratesRemaining--;
+      return false; // Видаляємо пірата
+    }
+
+    // Залишаємо пірата в грі
+    return true;
+  });
+
+  // Оновлюємо стан хвиль
+  managePirateWaves();
+
   // Видалення снарядів, які вже долетіли
-  const now = Date.now();
   gameState.projectiles = gameState.projectiles.filter(p => {
     // Якщо снаряд щойно створений, йому ще не присвоєно startTime.
     // Присвоюємо його при першій ітерації після створення.
@@ -254,48 +407,85 @@ setInterval(() => {
     return (now - p.startTime) < p.duration;
   });
 
+  // --- Логіка заводів ---
+  Object.keys(factoryStats).forEach(factoryId => {
+    const factory = factoryStats[factoryId];
+    const factoryState = gameState.factories[factoryId];
+
+    if (factoryState.status === 'idle') {
+      // Якщо завод вільний і є ресурси, починаємо переробку
+      if (gameState.playerResources[factory.inputResource] >= 1) {
+        gameState.playerResources[factory.inputResource] -= 1; // Забираємо ресурс
+        factoryState.status = 'processing';
+        factoryState.startTime = now;
+      }
+    } else if (factoryState.status === 'processing') {
+      // Якщо завод працює, перевіряємо, чи не час завершити
+      if (now - factoryState.startTime >= factory.processingTimeMs) {
+        gameState.playerResources[factory.outputResource] += 1; // Додаємо продукт
+        factoryState.status = 'idle';
+        factoryState.startTime = 0;
+      }
+    }
+  });
+
+
   // --- Логіка добування ресурсів ---
   gameState.miningPulses = []; // Очищуємо масив перед кожним оновленням
+  
+  Object.keys(miningLaserStats).forEach(laserId => {
+    const laser = miningLaserStats[laserId];
+    const laserState = gameState.miningLasers[laserId];
 
-  for (const laserType in miningLaserStats) {
-    const laser = miningLaserStats[laserType];
-    let closestChunk = null;
-    let minDistance = Infinity;
+    if (laserState.status === 'idle') {
+      // Шукаємо нову ціль
+      let closestChunk = null;
+      let minDistance = Infinity;
 
-    // Знаходимо найближчий уламок відповідного типу в радіусі дії
-    gameState.resourceChunks.forEach(chunk => {
-      if (chunk.resourceType === laser.resourceType) {
-        const dx = chunk.x - BASE_X;
-        const dy = chunk.y - BASE_Y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance <= laser.range && distance < minDistance) {
-          minDistance = distance;
-          closestChunk = chunk;
+      gameState.resourceChunks.forEach(chunk => {
+        if (chunk.resourceType === laser.resourceType) {
+          const dx = chunk.x - BASE_X;
+          const dy = chunk.y - BASE_Y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance <= laser.range && distance < minDistance) {
+            minDistance = distance;
+            closestChunk = chunk;
+          }
+        }
+      });
+
+      if (closestChunk) {
+        laserState.status = 'mining';
+        laserState.targetChunkId = closestChunk.id;
+        laserState.startTime = now;
+      }
+    } 
+    
+    if (laserState.status === 'mining') {
+      const targetChunk = gameState.resourceChunks.find(c => c.id === laserState.targetChunkId);
+
+      // Якщо ціль зникла або вийшла за межі діапазону, скидаємо стан
+      if (!targetChunk || Math.sqrt(Math.pow(targetChunk.x - BASE_X, 2) + Math.pow(targetChunk.y - BASE_Y, 2)) > laser.range) {
+        laserState.status = 'idle';
+        laserState.targetChunkId = null;
+        laserState.startTime = 0;
+      } else {
+        // Продовжуємо добування і малюємо промінь
+        gameState.miningPulses.push({ id: targetChunk.id, endX: targetChunk.x, endY: targetChunk.y, type: targetChunk.resourceType });
+
+        // Перевіряємо, чи завершився цикл добування
+        if (now - laserState.startTime >= laser.miningIntervalMs) {
+          targetChunk.amount -= 1;
+          gameState.playerResources[targetChunk.resourceType] += 1;
+          
+          // Не скидаємо ціль, а просто починаємо новий цикл добування з того ж уламка.
+          // Якщо в уламку закінчаться ресурси, він буде видалений, і на наступному тику
+          // лазер автоматично перейде в стан 'idle', бо не знайде ціль.
+          laserState.startTime = now; // Починаємо новий цикл
         }
       }
-    });
-
-    if (closestChunk) {
-      // Логіка добування
-      if (!closestChunk.miningStartTime) {
-        closestChunk.miningStartTime = now;
-      }
-
-      if (now - closestChunk.miningStartTime >= laser.miningIntervalMs) {
-        closestChunk.amount -= 1;
-        gameState.playerResources[closestChunk.resourceType] += 1;
-        closestChunk.miningStartTime = now; // Скидаємо таймер для наступної одиниці
-      }
-
-      // Додаємо активний промінь для візуалізації
-      gameState.miningPulses.push({
-        id: closestChunk.id, // Використовуємо ID уламка як ID променя
-        endX: closestChunk.x,
-        endY: closestChunk.y,
-        type: closestChunk.resourceType
-      });
     }
-  }
+  });
 
   // Видаляємо уламки, в яких закінчились ресурси
   gameState.resourceChunks = gameState.resourceChunks.filter(chunk => chunk.amount > 0);

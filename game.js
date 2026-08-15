@@ -10,6 +10,7 @@ let armamentButton, armamentList;
 let resourcesButton, resourcesList;
 let factoriesButton, factoriesList;
 let energyButton, energyList;
+let scienceButton, scienceList;
 let miningButton, miningList;
 let mainPanels;
 
@@ -24,11 +25,13 @@ function initializeUI() {
     factoriesList = document.getElementById('factories-list');
     energyButton = document.getElementById('energy-button');
     energyList = document.getElementById('energy-list');
+    scienceButton = document.getElementById('science-button');
+    scienceList = document.getElementById('science-list');
     miningButton = document.getElementById('mining-button');
     miningList = document.getElementById('mining-list');
 
     // Зберігаємо посилання на всі основні панелі для зручного керування
-    mainPanels = [armamentList, resourcesList, factoriesList, energyList, miningList];
+    mainPanels = [armamentList, resourcesList, factoriesList, energyList, scienceList, miningList];
     
     // Встановлюємо обробники подій
     setupEventListeners();
@@ -83,6 +86,10 @@ function setupEventListeners() {
         togglePanel(energyList);
     });
 
+    if (scienceButton) scienceButton.addEventListener('click', () => {
+        togglePanel(scienceList);
+    });
+
     if (miningButton) miningButton.addEventListener('click', () => {
         togglePanel(miningList);
     });
@@ -108,15 +115,7 @@ socket.onerror = (error) => {
     console.error('Помилка WebSocket:', error);
 };
 
-// Обробляємо повідомлення від сервера
-socket.onmessage = (event) => {
-    const gameState = JSON.parse(event.data);
-    updateAsteroids(gameState.asteroids);
-    updateProjectiles(gameState.projectiles); // Оновлюємо снаряди
-    updateResourceChunks(gameState.resourceChunks); // Оновлюємо уламки ресурсів
-    updatePlayerResources(gameState.playerResources); // Оновлюємо ресурси гравця
-    updateMiningPulses(gameState.miningPulses); // Малюємо імпульси добування
-};
+const piratesOnScreen = new Map(); // Зберігає { id => { wrapper, pirateEl, hpBar } }
 
 function updateAsteroids(serverAsteroids) {
     const serverIds = new Set(serverAsteroids.map(a => a.id));
@@ -172,6 +171,68 @@ function updateAsteroids(serverAsteroids) {
         if (tooltip) {
             tooltip.style.left = element.style.left;
             tooltip.style.top = element.style.top;
+        }
+    });
+}
+
+function updatePirates(serverPirates, waveState) {
+    const serverIds = new Set(serverPirates.map(p => p.id));
+    const pirateCounter = document.getElementById('pirate-counter');
+
+    if (pirateCounter) {
+        if (waveState.piratesRemaining > 0) {
+            pirateCounter.textContent = `Пірати: ${waveState.piratesRemaining}`;
+        } else {
+            const now = Date.now();
+            const timeLeft = Math.ceil((waveState.nextWaveIn - now) / 1000);
+            if (timeLeft > 0) {
+                pirateCounter.textContent = `Наступна хвиля через: ${timeLeft}с`;
+            }
+        }
+    }
+
+    // Видаляємо піратів, яких більше немає
+    for (const [id, elements] of piratesOnScreen.entries()) {
+        if (!serverIds.has(id)) {
+            elements.wrapper.remove();
+            piratesOnScreen.delete(id);
+        }
+    }
+
+    // Оновлюємо або створюємо піратів
+    serverPirates.forEach(pirate => {
+        let elements = piratesOnScreen.get(pirate.id);
+        if (!elements) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'pirate-wrapper';
+
+            const pirateEl = document.createElement('div');
+            pirateEl.className = 'pirate';
+
+            const hpContainer = document.createElement('div');
+            hpContainer.className = 'pirate-hp-container';
+            const hpBar = document.createElement('div');
+            hpBar.className = 'pirate-hp-bar';
+            hpContainer.appendChild(hpBar);
+
+            wrapper.appendChild(pirateEl);
+            wrapper.appendChild(hpContainer);
+            gameMap.appendChild(wrapper);
+            elements = { wrapper, pirateEl, hpBar };
+            piratesOnScreen.set(pirate.id, elements);
+        }
+        elements.wrapper.style.left = `${pirate.x}%`;
+        elements.wrapper.style.top = `${pirate.y}%`;
+
+        // Оновлюємо смужку здоров'я
+        const hpPercent = (pirate.hp / 5) * 100; // 5 - максимальне HP пірата
+        elements.hpBar.style.width = `${hpPercent}%`;
+        if (hpPercent < 30) {
+            elements.hpBar.style.backgroundColor = '#f44336'; // Червоний
+        } else if (hpPercent < 60) {
+            elements.hpBar.style.backgroundColor = '#ffeb3b'; // Жовтий
+        } else {
+            elements.hpBar.style.backgroundColor = '#4CAF50'; // Зелений
         }
     });
 }
@@ -300,11 +361,123 @@ function updateResourceChunks(serverChunks) {
 function updatePlayerResources(playerResources) {
     const iceAmountElement = document.querySelector('#basic-resources .resource-item:nth-child(1) span:nth-child(2)');
     const ironOreAmountElement = document.querySelector('#basic-resources .resource-item:nth-child(2) span:nth-child(2)');
+    const scrapMetalAmountElement = document.querySelector('#basic-resources .resource-item:nth-child(3) span:nth-child(2)');
     const metalAmountElement = document.querySelector('#secondary-resources .resource-item:nth-child(1) span:nth-child(2)');
     const waterAmountElement = document.querySelector('#secondary-resources .resource-item:nth-child(2) span:nth-child(2)');
 
     if (iceAmountElement) iceAmountElement.textContent = playerResources.ice;
     if (ironOreAmountElement) ironOreAmountElement.textContent = playerResources.ironOre;
+    if (scrapMetalAmountElement) scrapMetalAmountElement.textContent = playerResources.scrapMetal;
     if (metalAmountElement) metalAmountElement.textContent = playerResources.metal;
     if (waterAmountElement) waterAmountElement.textContent = playerResources.water;
 }
+
+function updateBaseHealth(baseState) {
+    const healthBar = document.getElementById('base-health-bar');
+    const healthText = document.getElementById('base-health-text');
+
+    if (healthBar && healthText && baseState) {
+        const healthPercent = (baseState.hp / baseState.maxHp) * 100;
+        healthBar.style.width = `${healthPercent}%`;
+        healthText.textContent = `${baseState.hp}/${baseState.maxHp}`;
+    }
+}
+
+function updateMiningUI(serverLasers) {
+    const laserConfig = {
+        ice: { processingTimeMs: 60000 },
+        ironOre: { processingTimeMs: 60000 }
+    };
+
+    Object.keys(serverLasers).forEach(laserId => {
+        const laserState = serverLasers[laserId];
+        const laserElement = document.querySelector(`.mining-item[data-laser-id="${laserId}"]`);
+        if (!laserElement) return;
+
+        const progressBar = laserElement.querySelector('.factory-progress-bar');
+        const timer = laserElement.querySelector('.factory-timer');
+
+        if (laserState.status === 'mining') {
+            const now = Date.now();
+            const elapsedTime = now - laserState.startTime;
+            const totalTime = laserConfig[laserId].processingTimeMs;
+            const remainingTimeMs = Math.max(0, totalTime - elapsedTime);
+            
+            const progressPercent = Math.min(100, (elapsedTime / totalTime) * 100);
+
+            progressBar.style.width = `${progressPercent}%`;
+
+            const remainingSeconds = Math.ceil(remainingTimeMs / 1000);
+            const minutes = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
+            const seconds = (remainingSeconds % 60).toString().padStart(2, '0');
+            timer.textContent = `${minutes}:${seconds}`;
+
+        } else { // 'idle'
+            progressBar.style.width = '0%';
+            timer.textContent = '--:--';
+        }
+    });
+}
+
+function updateFactoriesUI(serverFactories) {
+    const factoryConfig = {
+        smelter: { processingTimeMs: 60000 },
+        iceProcessor: { processingTimeMs: 60000 }
+    };
+
+    if (!serverFactories) return;
+
+    Object.keys(serverFactories).forEach(factoryId => {
+        const factoryState = serverFactories[factoryId];
+        const factoryElement = document.querySelector(`.factory-item[data-factory-id="${factoryId}"]`);
+        if (!factoryElement) return;
+
+        const progressBar = factoryElement.querySelector('.factory-progress-bar');
+        const timer = factoryElement.querySelector('.factory-timer');
+
+        if (factoryState.status === 'processing') {
+            const now = Date.now();
+            const elapsedTime = now - factoryState.startTime;
+            const totalTime = factoryConfig[factoryId].processingTimeMs;
+            const remainingTimeMs = Math.max(0, totalTime - elapsedTime);
+            
+            const progressPercent = Math.min(100, (elapsedTime / totalTime) * 100);
+
+            progressBar.style.width = `${progressPercent}%`;
+
+            const remainingSeconds = Math.ceil(remainingTimeMs / 1000);
+            const minutes = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
+            const seconds = (remainingSeconds % 60).toString().padStart(2, '0');
+            timer.textContent = `${minutes}:${seconds}`;
+
+        } else { // 'idle'
+            progressBar.style.width = '0%';
+            timer.textContent = '--:--';
+        }
+    });
+}
+
+let lastKnownGameState = {};
+
+// Оновлюємо таймери локально для плавності
+setInterval(() => {
+    if (lastKnownGameState.factories) updateFactoriesUI(lastKnownGameState.factories);
+    if (lastKnownGameState.miningLasers) updateMiningUI(lastKnownGameState.miningLasers);
+}, 200); 
+
+socket.onmessage = (event) => {
+    const gameState = JSON.parse(event.data);
+    // Зберігаємо стан для плавного локального оновлення таймерів
+    lastKnownGameState = gameState; 
+
+    // Викликаємо всі функції оновлення інтерфейсу
+    updatePirates(gameState.pirates, gameState.wave);
+    updateAsteroids(gameState.asteroids);
+    updateProjectiles(gameState.projectiles);
+    updateResourceChunks(gameState.resourceChunks);
+    updatePlayerResources(gameState.playerResources);
+    updateBaseHealth(gameState.base);
+    updateMiningPulses(gameState.miningPulses);
+    updateMiningUI(gameState.miningLasers);
+    updateFactoriesUI(gameState.factories);
+};

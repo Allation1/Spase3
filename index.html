@@ -3,15 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Моя Стилізована Сторінка</title>
+    <title>Космічна стратегія</title>
     <link rel="stylesheet" href="style.css"> <!-- Підключаємо наш CSS файл -->
 </head>
 <body>
-    <div class="main-container">
+    <!-- Ліва панель управління -->
         <div id="left-panel" class="side-panel">
             <div class="button-container">
                 <button id="resources-button" class="game-button">Ресурси</button>
                 <button id="factories-button" class="game-button">Заводи</button>
+                <button id="science-button" class="game-button">Наука</button>
                 <button id="energy-button" class="game-button">Енергетика</button>
             </div>
             <div class="info-panel">
@@ -21,17 +22,38 @@
                         <button class="tab-button" data-tab="secondary-resources">Вторинні</button>
                     </div>
                     <div id="basic-resources" class="tab-content active">
-                        <div class="resource-item"><span>Лід</span><span>0</span></div>
-                        <div class="resource-item"><span>Залізна руда</span><span>0</span></div>
+                        <div class="resource-item"><span>Лід:</span><span>0</span></div>
+                        <div class="resource-item"><span>Залізна руда:</span><span>0</span></div>
+                        <div class="resource-item"><span>Металолом:</span><span>0</span></div>
                     </div>
                     <div id="secondary-resources" class="tab-content">
-                        <div class="resource-item"><span>Метал</span><span>0</span></div>
-                        <div class="resource-item"><span>Вода</span><span>0</span></div>
+                        <div class="resource-item"><span>Метал:</span><span>0</span></div>
+                        <div class="resource-item"><span>Вода:</span><span>0</span></div>
                     </div>
                 </div>
                 <div id="factories-list" class="hidden">
-                    <div class="factory-item">Металургійний завод</div>
-                    <div class="factory-item">Завод переробки льоду</div>
+                    <div class="factory-item" data-factory-id="smelter">
+                        Металургійний завод
+                        <br>Переробляє: 1 Залізну руду → 1 Метал
+                        <br>Швидкість: 1 од./хв
+                        <div class="factory-progress-container">
+                            <div class="factory-progress-bar"></div>
+                            <span class="factory-timer">--:--</span>
+                        </div>
+                    </div>
+                    <div class="factory-item" data-factory-id="iceProcessor">
+                        Завод переробки льоду
+                        <br>Переробляє: 1 Лід → 1 Вода
+                        <br>Швидкість: 1 од./хв
+                        <div class="factory-progress-container">
+                            <div class="factory-progress-bar"></div>
+                            <span class="factory-timer">--:--</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="science-list" class="hidden">
+                    <!-- Тут буде вміст для вкладки "Наука" -->
+                    <div class="science-item">Поки що немає доступних досліджень.</div>
                 </div>
                 <div id="energy-list" class="hidden">
                     <div class="energy-item">
@@ -47,9 +69,19 @@
                 </div>
             </div>
         </div>
+    <!-- Ігрове поле -->
         <div id="game-map">
+            <div id="pirate-counter">Пірати: 0</div>
             <div id="base"></div>
         </div>
+        <div id="base-health-container">
+            <span>Броня</span>
+            <div id="base-health-bar-background">
+                <div id="base-health-bar"></div>
+            </div>
+            <span id="base-health-text">100/100</span>
+        </div>
+    <!-- Права панель управління -->
         <div id="right-panel" class="side-panel">
             <div class="button-container">
                 <button id="armament-button" class="game-button">Озброєння</button>
@@ -65,20 +97,27 @@
                     </div>
                 </div>
                 <div id="mining-list" class="hidden">
-                    <div class="mining-item">
+                    <div class="mining-item" data-laser-id="ice">
                         Лазер для Льоду
                         <br>Дальність: 20% карти
                         <br>Швидкість: 1 од./хв
+                        <div class="factory-progress-container">
+                            <div class="factory-progress-bar"></div>
+                            <span class="factory-timer">--:--</span>
+                        </div>
                     </div>
-                    <div class="mining-item">
+                    <div class="mining-item" data-laser-id="ironOre">
                         Лазер для Залізної руди
                         <br>Дальність: 20% карти
                         <br>Швидкість: 1 од./хв
+                        <div class="factory-progress-container">
+                            <div class="factory-progress-bar"></div>
+                            <span class="factory-timer">--:--</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
     <script src="game.js"></script>
 </body>
 </html>
