@@ -20,6 +20,11 @@ const miningLaserStats = {
     range: 20,
     resourceType: 'ironOre',
     miningIntervalMs: 60000 // 1 одиниця за хвилину
+  },
+  scrapMetal: {
+    range: 20,
+    resourceType: 'scrapMetal',
+    miningIntervalMs: 60000 // 1 одиниця за хвилину
   }
 };
 
@@ -128,6 +133,7 @@ let gameState = {
     piratesRemaining: 0,
     nextWaveIn: 0 // Час в мс до наступної хвилі
   },
+  repairEffects: [], // Для анімації ремонту
   miningPulses: [], // Для візуалізації імпульсів добування
   factories: {
     smelter: { status: 'idle', startTime: 0 },
@@ -135,7 +141,8 @@ let gameState = {
   },
   miningLasers: {
     ice: { status: 'idle', targetChunkId: null, startTime: 0 },
-    ironOre: { status: 'idle', targetChunkId: null, startTime: 0 }
+    ironOre: { status: 'idle', targetChunkId: null, startTime: 0 },
+    scrapMetal: { status: 'idle', targetChunkId: null, startTime: 0 }
   }
 };
 let nextAsteroidId = 0;
@@ -148,6 +155,27 @@ wss.on('connection', ws => {
   ws.on('close', () => {
     console.log('Клієнт відключився');
   });
+
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+      if (data.action === 'repair_base') {
+        // Логіка ремонту бази
+        if (gameState.playerResources.metal >= 1 && gameState.base.hp < gameState.base.maxHp) {
+          gameState.playerResources.metal -= 1;
+          gameState.base.hp = Math.min(gameState.base.maxHp, gameState.base.hp + 10);
+          // Додаємо ефект для анімації на клієнті
+          gameState.repairEffects.push({
+            id: Date.now(), // Простий унікальний ID
+            startTime: Date.now()
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Помилка обробки повідомлення від клієнта:', error);
+    }
+  });
+
 });
 
 function broadcastGameState() {
@@ -377,7 +405,7 @@ setInterval(() => {
       pirate.y = BASE_Y + Math.sin(pirate.orbitAngle) * orbitDistance;
 
       // Атака на базу
-      if (now - pirate.lastAttackTime >= 1000) { // 1 атака в секунду
+      if (now - pirate.lastAttackTime >= 2000) { // 1 атака на 2 секунди
         gameState.base.hp = Math.max(0, gameState.base.hp - 1);
         pirate.lastAttackTime = now;
       }
@@ -385,7 +413,16 @@ setInterval(() => {
 
     // Перевіряємо, чи пірат ще живий
     if (pirate.hp <= 0) {
-      // Тут можна додати випадіння металолому
+      // Шанс 10% на випадіння металолому
+      if (Math.random() <= 0.1) {
+        gameState.resourceChunks.push({
+          id: nextChunkId++,
+          x: pirate.x,
+          y: pirate.y,
+          resourceType: 'scrapMetal',
+          amount: 1 // 1 одиниця металолому
+        });
+      }
       gameState.wave.piratesRemaining--;
       return false; // Видаляємо пірата
     }
@@ -406,6 +443,10 @@ setInterval(() => {
     }
     return (now - p.startTime) < p.duration;
   });
+
+  // Видалення застарілих ефектів ремонту
+  const effectDuration = 2000; // 2 секунди
+  gameState.repairEffects = gameState.repairEffects.filter(effect => (now - effect.startTime) < effectDuration);
 
   // --- Логіка заводів ---
   Object.keys(factoryStats).forEach(factoryId => {

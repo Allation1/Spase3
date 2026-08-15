@@ -100,6 +100,11 @@ function setupEventListeners() {
     if (defenseButton) defenseButton.addEventListener('click', () => {
         togglePanel(defenseList);
     });
+
+    const repairDroneButton = document.getElementById('repair-drone-button');
+    if (repairDroneButton) repairDroneButton.addEventListener('click', () => {
+        socket.send(JSON.stringify({ action: 'repair_base' }));
+    });
 }
 
 // --- WebSocket логіка ---
@@ -464,6 +469,36 @@ function updateFactoriesUI(serverFactories) {
     });
 }
 
+const repairEffectsOnScreen = new Set();
+
+function updateRepairEffects(serverEffects) {
+    if (!serverEffects) return;
+    serverEffects.forEach(effect => {
+        if (!repairEffectsOnScreen.has(effect.id)) {
+            repairEffectsOnScreen.add(effect.id);
+
+            // Створюємо кілька іскор для одного ефекту
+            for (let i = 0; i < 5; i++) {
+                const spark = document.createElement('div');
+                spark.className = 'repair-spark';
+                spark.style.left = `${BASE_X}%`;
+                spark.style.top = `${BASE_Y}%`;
+
+                // Задаємо випадковий напрямок відльоту через CSS-змінні
+                const angle = Math.random() * 2 * Math.PI;
+                spark.style.setProperty('--tx', `${Math.cos(angle) * 50}px`);
+                spark.style.setProperty('--ty', `${Math.sin(angle) * 50}px`);
+
+                gameMap.appendChild(spark);
+                // Видаляємо елемент після завершення анімації
+                setTimeout(() => spark.remove(), 2000);
+            }
+            // Видаляємо ID ефекту, щоб не створювати його знову
+            setTimeout(() => repairEffectsOnScreen.delete(effect.id), 2000);
+        }
+    });
+}
+
 let lastKnownGameState = {};
 
 // Оновлюємо таймери локально для плавності
@@ -484,6 +519,7 @@ socket.onmessage = (event) => {
     updateResourceChunks(gameState.resourceChunks);
     updatePlayerResources(gameState.playerResources);
     updateBaseHealth(gameState.base);
+    updateRepairEffects(gameState.repairEffects);
     updateMiningPulses(gameState.miningPulses);
     updateMiningUI(gameState.miningLasers);
     updateFactoriesUI(gameState.factories);
