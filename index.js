@@ -148,6 +148,9 @@ let gameState = {
       hullResearch: { level: 0 }
     }
   },
+  defenseUpgrades: {
+    baseArmor: { level: 0 }
+  },
   repairDrone: {
     status: 'idle', startTime: 0
   },
@@ -179,6 +182,17 @@ wss.on('connection', ws => {
           science.hullStudy.status = 'idle';
           science.hullStudy.startTime = 0;
         }
+      } else if (data.action === 'upgrade_armor') {
+        const armorUpgrade = gameState.defenseUpgrades.baseArmor;
+        const sciencePrerequisite = science.upgrades.baseArmor;
+        const baseCost = 10;
+        const cost = Math.floor(baseCost * Math.pow(1.1, armorUpgrade.level));
+
+        if (gameState.playerResources.metal >= cost && armorUpgrade.level < sciencePrerequisite.level) {
+          gameState.playerResources.metal -= cost;
+          armorUpgrade.level += 1;
+          gameState.base.maxHp += 10;
+        }
       } else if (data.action === 'upgrade') {
         const upgrade = science.upgrades[data.type];
         if (upgrade) {
@@ -187,14 +201,6 @@ wss.on('connection', ws => {
           if (science.points >= cost) {
             science.points -= cost;
             upgrade.level += 1;
-
-            // Застосовуємо ефект від покращення броні
-            if (data.type === 'baseArmor') {
-              const baseMaxHp = 100;
-              gameState.base.maxHp = Math.floor(baseMaxHp * (1 + upgrade.level * 0.1));
-              // Також трохи ремонтуємо базу при покращенні
-              gameState.base.hp = Math.min(gameState.base.maxHp, gameState.base.hp + Math.floor(baseMaxHp * 0.1));
-            }
           }
         }
       }

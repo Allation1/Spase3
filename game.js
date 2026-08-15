@@ -107,6 +107,11 @@ function setupEventListeners() {
         socket.send(JSON.stringify({ action: 'toggle_hull_study' }));
     });
 
+    const upgradeArmorButton = document.getElementById('upgrade-armor-button');
+    if (upgradeArmorButton) upgradeArmorButton.addEventListener('click', () => {
+        socket.send(JSON.stringify({ action: 'upgrade_armor' }));
+    });
+
     document.querySelectorAll('.upgrade-button').forEach(button => {
         button.addEventListener('click', () => {
             const upgradeType = button.dataset.upgrade;
@@ -494,11 +499,12 @@ function updateFactoriesUI(serverFactories) {
     });
 }
 
-function updateDefenseUI(droneState) {
-    if (!droneState) return;
+function updateDefenseUI(droneState, defenseUpgrades) {
+    if (!droneState || !defenseUpgrades) return;
 
+    // Оновлення ремонтного дрона
     const droneElement = document.querySelector('.defense-item[data-drone-id="repair-drone"]');
-    if (!droneElement) return;
+    if (!droneElement) return; // Виходимо, якщо елемент ще не створено
 
     const progressBar = droneElement.querySelector('.factory-progress-bar');
     const timer = droneElement.querySelector('.factory-timer');
@@ -520,6 +526,16 @@ function updateDefenseUI(droneState) {
     } else { // 'idle'
         progressBar.style.width = '0%';
         timer.textContent = '--:--';
+    }
+
+    // Оновлення покращення броні
+    const armorUpgrade = document.getElementById('upgrade-base-armor-defense');
+    if (armorUpgrade) {
+        const armorLevel = defenseUpgrades.baseArmor.level;
+        armorUpgrade.querySelector('.upgrade-level').textContent = armorLevel;
+        const baseCost = 10;
+        const cost = Math.floor(baseCost * Math.pow(1.1, armorLevel));
+        armorUpgrade.querySelector('.upgrade-cost').textContent = cost;
     }
 }
 
@@ -627,7 +643,7 @@ let lastKnownGameState = {};
 setInterval(() => {
     if (lastKnownGameState.factories) updateFactoriesUI(lastKnownGameState.factories);
     if (lastKnownGameState.miningLasers) updateMiningUI(lastKnownGameState.miningLasers);
-    if (lastKnownGameState.repairDrone) updateDefenseUI(lastKnownGameState.repairDrone);
+    if (lastKnownGameState.repairDrone && lastKnownGameState.defenseUpgrades) updateDefenseUI(lastKnownGameState.repairDrone, lastKnownGameState.defenseUpgrades);
     if (lastKnownGameState.science) updateScienceUI(lastKnownGameState.science);
 }, 200); 
 
@@ -646,7 +662,7 @@ socket.onmessage = (event) => {
     updateRepairEffects(gameState.repairEffects);
     updateMiningPulses(gameState.miningPulses);
     updateScienceUI(gameState.science);
-    updateDefenseUI(gameState.repairDrone);
+    updateDefenseUI(gameState.repairDrone, gameState.defenseUpgrades);
     updateMiningUI(gameState.miningLasers);
     updateFactoriesUI(gameState.factories);
 };
