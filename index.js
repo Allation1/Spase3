@@ -275,7 +275,7 @@ setInterval(() => {
 
 // --- Логіка хвиль піратів ---
 let lastPirateSpawnTime = 0;
-const PIRATE_SPAWN_INTERVAL = 10000; // 10 секунд
+const PIRATE_SPAWN_INTERVAL = 15000; // 15 секунд
 const PEACE_TIME_MS = 5000; // 5 секунд
 
 function managePirateWaves() {
