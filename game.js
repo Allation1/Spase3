@@ -356,7 +356,14 @@ function updateResourceChunks(serverChunks) {
             element.className = `resource-chunk ${chunk.resourceType}`;
             element.style.left = `${chunk.x}%`;
             element.style.top = `${chunk.y}%`;
-            const resourceName = chunk.resourceType === 'ice' ? 'Лід' : 'Залізна руда';
+            let resourceName;
+            if (chunk.resourceType === 'ice') {
+                resourceName = 'Лід';
+            } else if (chunk.resourceType === 'ironOre') {
+                resourceName = 'Залізна руда';
+            } else if (chunk.resourceType === 'scrapMetal') {
+                resourceName = 'Металолом';
+            }
             element.title = `${resourceName}: ${chunk.amount}`;
 
             gameMap.appendChild(element);

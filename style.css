@@ -169,6 +169,10 @@ body {
     background-color: #ff7f50;
 }
 
+.mining-pulse.scrapMetal {
+    background-color: #cccccc;
+}
+
 @keyframes beam-pulse {
     from { opacity: 0.6; }
     to { opacity: 1.0; }
@@ -191,6 +195,11 @@ body {
 .resource-chunk.ironOre {
     background-color: #b9734f;
     border: 1px solid #d3a38a;
+}
+
+.resource-chunk.scrapMetal {
+    background-color: #888888;
+    border: 1px solid #aaaaaa;
 }
 
 .projectile {
