@@ -114,6 +114,7 @@ const wss = new WebSocket.Server({ server });
 let gameState = {
   asteroids: [],
   pirates: [],
+  pirateProjectiles: [],
   projectiles: [], // Новий масив для снарядів
   resourceChunks: [], // Новий масив для уламків ресурсів
   playerResources: {
@@ -441,6 +442,15 @@ setInterval(() => {
       if (now - pirate.lastAttackTime >= 2000) { // 1 атака на 2 секунди
         gameState.base.hp = Math.max(0, gameState.base.hp - 1);
         pirate.lastAttackTime = now;
+        // Створюємо снаряд пірата
+        gameState.pirateProjectiles.push({
+          id: `p_${nextProjectileId++}`,
+          startX: pirate.x,
+          startY: pirate.y,
+          endX: BASE_X,
+          endY: BASE_Y,
+          duration: 1000 // Тривалість польоту 1с
+        });
       }
     }
 
@@ -473,6 +483,14 @@ setInterval(() => {
   gameState.projectiles = gameState.projectiles.filter(p => {
     // Якщо снаряд щойно створений, йому ще не присвоєно startTime.
     // Присвоюємо його при першій ітерації після створення.
+    if (!p.startTime) {
+      p.startTime = now;
+    }
+    return (now - p.startTime) < p.duration;
+  });
+
+  // Видалення піратських снарядів
+  gameState.pirateProjectiles = gameState.pirateProjectiles.filter(p => {
     if (!p.startTime) {
       p.startTime = now;
     }

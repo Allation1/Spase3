@@ -265,6 +265,45 @@ function updatePirates(serverPirates, waveState) {
     });
 }
 
+const pirateProjectilesOnScreen = new Map();
+
+function updatePirateProjectiles(serverProjectiles) {
+    // Оновлюємо або створюємо снаряди
+    serverProjectiles.forEach(projectile => {
+        let element = pirateProjectilesOnScreen.get(projectile.id);
+        if (!element) {
+            element = document.createElement('div');
+            element.className = 'pirate-projectile';
+            gameMap.appendChild(element);
+            pirateProjectilesOnScreen.set(projectile.id, element);
+
+            // Початкова позиція снаряда
+            element.style.left = `${projectile.startX}%`;
+            element.style.top = `${projectile.startY}%`;
+            element.style.transition = 'none';
+
+            // Примусовий reflow
+            element.offsetWidth; 
+
+            // Анімація
+            requestAnimationFrame(() => {
+                element.style.transition = `left ${projectile.duration}ms linear, top ${projectile.duration}ms linear`;
+                element.style.left = `${projectile.endX}%`;
+                element.style.top = `${projectile.endY}%`;
+            });
+
+            // Видалення елемента
+            setTimeout(() => {
+                if (element) {
+                    element.remove();
+                }
+                pirateProjectilesOnScreen.delete(projectile.id);
+            }, projectile.duration);
+        }
+    });
+}
+
+
 // --- Оновлення снарядів ---
 const projectilesOnScreen = new Map();
 const resourceChunksOnScreen = new Map();
@@ -655,6 +694,7 @@ socket.onmessage = (event) => {
     // Викликаємо всі функції оновлення інтерфейсу
     updatePirates(gameState.pirates, gameState.wave);
     updateAsteroids(gameState.asteroids);
+    updatePirateProjectiles(gameState.pirateProjectiles);
     updateProjectiles(gameState.projectiles);
     updateResourceChunks(gameState.resourceChunks);
     updatePlayerResources(gameState.playerResources);

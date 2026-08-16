@@ -214,6 +214,18 @@ body {
     pointer-events: none; /* Не блокуємо події миші */
 }
 
+.pirate-projectile {
+    position: absolute;
+    width: 0.6%;
+    height: 0.6%;
+    background-color: #ff4d4d; /* Червоний колір */
+    border: 1px solid #ff9999;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    pointer-events: none;
+}
+
 .pirate {
     position: absolute;
     top: 50%;
